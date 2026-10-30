@@ -25,6 +25,42 @@ def test_preview_prompt_has_no_submission_steps(jobs):
     assert "Do NOT click the final Submit/Apply button" in instructions
 
 
+@pytest.mark.parametrize('dry_run', [True, False])
+def test_login_prefers_linkedin_then_google_then_email(jobs, dry_run):
+    instructions = prompt.build_prompt(jobs(), 'Synthetic fixture', dry_run=dry_run)
+    login = instructions.split('5. Login wall?', 1)[1].split('6. Upload resume.', 1)[0]
+    assert login.index('Reuse the existing website session') < login.index('Continue with LinkedIn')
+    assert login.index('Continue with LinkedIn') < login.index('Continue with Google')
+    assert login.index('Continue with Google') < login.index('Email-code fallback')
+    assert login.index('Email-code fallback') < login.index('Password fallback')
+    assert 'accounts.google.com' in login
+    assert 'exactly matches applicant@example.test' in login
+    assert 'Never enter a Google password' in login
+    assert 'new OAuth permissions' in login
+    assert 'never use an old code' in login
+    assert 'Account creation is not enabled' in login
+    assert 'No password is configured' in login
+    assert 'Do not automate other SSO providers' in login
+    assert 'Try sign up' not in login
+    assert 'Do NOT try to sign in to Google/Microsoft/SSO' not in login
+
+
+@pytest.mark.parametrize('dry_run', [True, False])
+def test_portal_signup_is_opt_in_and_credentials_are_redacted(monkeypatch, jobs, dry_run):
+    from applypilot.providers import redact
+    monkeypatch.setenv('JOB_PORTAL_SIGNUP', '1')
+    monkeypatch.setenv('JOB_PORTAL_PASSWORD', 'synthetic-portal-password')
+    instructions = prompt.build_prompt(jobs(), 'Synthetic fixture', dry_run=dry_run)
+    assert 'Job-portal account creation' in instructions
+    assert 'synthetic-portal-password' in instructions
+    assert 'never use an old code' in instructions
+    assert 'Never create a LinkedIn or Google account' in instructions
+    assert 'posting, messaging, contacts' in instructions
+    assert 'synthetic-portal-password' not in redact(instructions)
+    if dry_run:
+        assert 'Do NOT click the final Submit/Apply button' in instructions
+
+
 def test_workers_have_separate_uploads(jobs, tmp_path):
     first = jobs()
     second = jobs("http://second.test/")
@@ -32,6 +68,18 @@ def test_workers_have_separate_uploads(jobs, tmp_path):
     second_text = prompt.build_prompt(second, "second", upload_dir=tmp_path / "worker-1" / "uploads")
     assert str(tmp_path / "worker-0" / "uploads") in first_text
     assert str(tmp_path / "worker-1" / "uploads") in second_text
+
+
+@pytest.mark.parametrize('dry_run', [True, False])
+def test_recent_site_resume_reuse_overrides_mandatory_upload(jobs, dry_run):
+    instructions = prompt.build_prompt(jobs(), 'Synthetic fixture', dry_run=dry_run)
+    assert 'less than 24 hours ago' in instructions
+    assert 'do not delete or re-upload it' in instructions
+    assert 'its age is unknown, it is 24 hours old or older' in instructions
+    assert "not the local PDF's modification time" in instructions
+    assert 'Current reference time:' in instructions
+    assert "Apply step 6's resume reuse rule first" in instructions
+    assert 'ALWAYS upload fresh' not in instructions
 
 
 def test_preview_preserves_attempts_and_is_submit_eligible(jobs):

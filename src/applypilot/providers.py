@@ -61,6 +61,6 @@ def agent_requirements(agent: str) -> list[str]:
 def redact(text: str) -> str:
     """Remove configured API credentials from external error messages and logs."""
     for name, value in os.environ.items():
-        if value and name.endswith(("API_KEY", "API_TOKEN")):
+        if value and name.endswith(("API_KEY", "API_TOKEN", "PASSWORD")):
             text = text.replace(value, "[redacted]")
     return text

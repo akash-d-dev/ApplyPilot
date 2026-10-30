@@ -26,6 +26,8 @@ def isolated_setup(monkeypatch, tmp_path):
         "LLM_MODEL",
         "CURSOR_MODEL",
         "APPLY_AGENT",
+        "JOB_PORTAL_SIGNUP",
+        "JOB_PORTAL_PASSWORD",
     ):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setattr(config, "load_env", lambda: None)

@@ -1,0 +1,268 @@
+
+╭──────────────────────────────────╮
+│ ApplyPilot Pipeline (sequential) │
+╰──────────────────────────────────╯
+  Min score:  7
+  Workers:    1
+  Validation: strict
+  Stages:     score -> tailor -> cover -> pdf
+  DB:        95 jobs, 1 pending enrichment
+01:35:40 - INFO - Model: cursor | composer-2.5 | standard (fast=false)
+01:35:40 - INFO - Mode: preparation only; no applications will be submitted
+01:35:40 - INFO - Applications this run: applied=0 | previewed=0
+01:35:40 - INFO - Saved totals: jobs=95 | scored=35 | resumes=0 | cover_letters=0 | applied=0 | previewed=0
+
+======================================================================
+  STAGE: score - LLM scoring (fit 1-10)
+  Started: 01:35:40
+======================================================================
+01:35:40 - INFO - Scoring 59 jobs sequentially...
+01:35:40 - INFO - Scoring: processed=0/59 | scored=0 | failed=0 | START
+01:35:40 - INFO - Scoring [1/59] START | Flutter + Backend Developer Intern (Remote) – Paid Internship | Remote, India (Remote) | source=indeed
+01:35:53 - INFO - Scoring: processed=1/59 | scored=1 | failed=0 | OK | Flutter + Backend Developer Intern (Remote) – Paid Internship | Remote, India (Remote) | source=indeed | fit=5/10
+01:35:53 - INFO - Scoring [2/59] START | AI Infrastructure Engineer – Generative AI Model Serving (Go / Rust / GPU) | India (Remote) | source=indeed
+01:36:08 - INFO - Scoring: processed=2/59 | scored=2 | failed=0 | OK | AI Infrastructure Engineer – Generative AI Model Serving (Go / Rust / GPU) | India (Remote) | source=indeed | fit=4/10
+01:36:08 - INFO - Scoring [3/59] START | Part Time Full stack java developer | Remote, India (Remote) | source=indeed
+01:36:22 - INFO - Scoring: processed=3/59 | scored=3 | failed=0 | OK | Part Time Full stack java developer | Remote, India (Remote) | source=indeed | fit=5/10
+01:36:22 - INFO - Scoring [4/59] START | Safety Software Lead | India (Remote) | source=indeed
+01:36:37 - INFO - Scoring: processed=4/59 | scored=4 | failed=0 | OK | Safety Software Lead | India (Remote) | source=indeed | fit=2/10
+01:36:37 - INFO - Scoring [5/59] START | Back End Developer | India | source=linkedin
+01:36:52 - INFO - Scoring: processed=5/59 | scored=5 | failed=0 | OK | Back End Developer | India | source=linkedin | fit=8/10
+01:36:52 - INFO - Scoring [6/59] START | Freelance ORMB Developer | India | source=linkedin
+01:37:07 - INFO - Scoring: processed=6/59 | scored=6 | failed=0 | OK | Freelance ORMB Developer | India | source=linkedin | fit=2/10
+01:37:07 - INFO - Scoring [7/59] START | Freelance Amazon Connect AI Engineer | India | source=linkedin
+01:37:21 - INFO - Scoring: processed=7/59 | scored=7 | failed=0 | OK | Freelance Amazon Connect AI Engineer | India | source=linkedin | fit=3/10
+01:37:21 - INFO - Scoring [8/59] START | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin
+01:37:36 - INFO - Scoring: processed=8/59 | scored=8 | failed=0 | OK | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin | fit=8/10
+01:37:36 - INFO - Scoring [9/59] START | Freelance Full-Stack Developer | Django | AI Products | Python & LLM Integration | India | source=linkedin
+01:37:52 - INFO - Scoring: processed=9/59 | scored=9 | failed=0 | OK | Freelance Full-Stack Developer | Django | AI Products | Python & LLM Integration | India | source=linkedin | fit=4/10
+01:37:52 - INFO - Scoring [10/59] START | Senior Software Engineer | Hyderabad, Telangana, India | source=linkedin
+01:38:08 - INFO - Scoring: processed=10/59 | scored=10 | failed=0 | OK | Senior Software Engineer | Hyderabad, Telangana, India | source=linkedin | fit=4/10
+01:38:08 - INFO - Scoring [11/59] START | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin
+01:38:23 - INFO - Scoring: processed=11/59 | scored=11 | failed=0 | OK | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin | fit=7/10
+01:38:23 - INFO - Scoring [12/59] START | Automation Quality Analyst | India (Remote) | source=indeed
+01:38:38 - INFO - Scoring: processed=12/59 | scored=12 | failed=0 | OK | Automation Quality Analyst | India (Remote) | source=indeed | fit=3/10
+01:38:38 - INFO - Scoring [13/59] START | Senior Full-Stack .NET Developer – Angular (NgRx) | Finance & Accounting Integrations | Remote, India (Remote) | source=indeed
+01:38:54 - INFO - Scoring: processed=13/59 | scored=13 | failed=0 | OK | Senior Full-Stack .NET Developer – Angular (NgRx) | Finance & Accounting Integrations | Remote, India (Remote) | source=indeed | fit=3/10
+01:38:54 - INFO - Scoring [14/59] START | Senior Web Developer | Remote, India (Remote) | source=indeed
+01:39:09 - INFO - Scoring: processed=14/59 | scored=14 | failed=0 | OK | Senior Web Developer | Remote, India (Remote) | source=indeed | fit=4/10
+01:39:09 - INFO - Scoring [15/59] START | Sitecore Developer | Remote, India (Remote) | source=indeed
+01:39:22 - INFO - Scoring: processed=15/59 | scored=15 | failed=0 | OK | Sitecore Developer | Remote, India (Remote) | source=indeed | fit=2/10
+01:39:22 - INFO - Scoring [16/59] START | iOS Developer | India (Remote) | source=indeed
+01:39:36 - INFO - Scoring: processed=16/59 | scored=16 | failed=0 | OK | iOS Developer | India (Remote) | source=indeed | fit=1/10
+01:39:36 - INFO - Scoring [17/59] START | Android Developer | India (Remote) | source=indeed
+01:39:48 - INFO - Scoring: processed=17/59 | scored=17 | failed=0 | OK | Android Developer | India (Remote) | source=indeed | fit=1/10
+01:39:48 - INFO - Scoring [18/59] START | Freelance Node.js Microservices Trainer – Video Course Recording | Remote, India (Remote) | source=indeed
+01:40:02 - INFO - Scoring: processed=18/59 | scored=18 | failed=0 | OK | Freelance Node.js Microservices Trainer – Video Course Recording | Remote, India (Remote) | source=indeed | fit=4/10
+01:40:02 - INFO - Scoring [19/59] START | AWS Developer - Contract | India | source=linkedin
+01:40:15 - INFO - Scoring: processed=19/59 | scored=19 | failed=0 | OK | AWS Developer - Contract | India | source=linkedin | fit=3/10
+01:40:15 - INFO - Scoring [20/59] START | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin
+01:40:27 - INFO - Scoring: processed=20/59 | scored=20 | failed=0 | OK | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin | fit=8/10
+01:40:27 - INFO - Scoring [21/59] START | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin
+01:40:45 - INFO - Scoring: processed=21/59 | scored=21 | failed=0 | OK | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin | fit=8/10
+01:40:45 - INFO - Scoring [22/59] START | API Developer | Chennai, Tamil Nadu, India | source=linkedin
+01:40:59 - INFO - Scoring: processed=22/59 | scored=22 | failed=0 | OK | API Developer | Chennai, Tamil Nadu, India | source=linkedin | fit=1/10
+01:40:59 - INFO - Scoring [23/59] START | Senior .NET Developer | Surat, Gujarat, India | source=linkedin
+01:41:11 - INFO - Scoring: processed=23/59 | scored=23 | failed=0 | OK | Senior .NET Developer | Surat, Gujarat, India | source=linkedin | fit=1/10
+01:41:11 - INFO - Scoring [24/59] START | API Developer | Kerala, India | source=linkedin
+01:41:28 - INFO - Scoring: processed=24/59 | scored=24 | failed=0 | OK | API Developer | Kerala, India | source=linkedin | fit=7/10
+01:41:28 - INFO - Scoring [25/59] START | SDE2 | India | source=linkedin
+01:41:41 - INFO - Scoring: processed=25/59 | scored=25 | failed=0 | OK | SDE2 | India | source=linkedin | fit=1/10
+01:41:41 - INFO - Scoring [26/59] START | Backend Engineer | Remote | India (Remote) | source=linkedin
+01:41:55 - INFO - Scoring: processed=26/59 | scored=26 | failed=0 | OK | Backend Engineer | Remote | India (Remote) | source=linkedin | fit=7/10
+01:41:55 - INFO - Scoring [27/59] START | Back End Developer | India | source=linkedin
+01:42:11 - INFO - Scoring: processed=27/59 | scored=27 | failed=0 | OK | Back End Developer | India | source=linkedin | fit=6/10
+01:42:11 - INFO - Scoring [28/59] START | Senior Backend Engineer | India | source=linkedin
+01:42:26 - INFO - Scoring: processed=28/59 | scored=28 | failed=0 | OK | Senior Backend Engineer | India | source=linkedin | fit=4/10
+01:42:26 - INFO - Scoring [29/59] START | CPQ Support Engineer | MH, India (Remote) | source=indeed
+01:42:38 - INFO - Scoring: processed=29/59 | scored=29 | failed=0 | OK | CPQ Support Engineer | MH, India (Remote) | source=indeed | fit=1/10
+01:42:38 - INFO - Scoring [30/59] START | CPQ Support Engineer | MH, India (Remote) | source=indeed
+01:42:51 - INFO - Scoring: processed=30/59 | scored=30 | failed=0 | OK | CPQ Support Engineer | MH, India (Remote) | source=indeed | fit=1/10
+01:42:51 - INFO - Scoring [31/59] START | Senior Platform Engineer Role (Devops) | BR, India (Remote) | source=indeed
+01:43:06 - INFO - Scoring: processed=31/59 | scored=31 | failed=0 | OK | Senior Platform Engineer Role (Devops) | BR, India (Remote) | source=indeed | fit=2/10
+01:43:06 - INFO - Scoring [32/59] START | Full Stack Developer | Remote, India (Remote) | source=indeed
+01:43:20 - INFO - Scoring: processed=32/59 | scored=32 | failed=0 | OK | Full Stack Developer | Remote, India (Remote) | source=indeed | fit=4/10
+01:43:20 - INFO - Scoring [33/59] START | Full Stack Developer (Python, AWS) | Remote, India (Remote) | source=indeed
+01:43:38 - INFO - Scoring: processed=33/59 | scored=33 | failed=0 | OK | Full Stack Developer (Python, AWS) | Remote, India (Remote) | source=indeed | fit=4/10
+01:43:38 - INFO - Scoring [34/59] START | Senior Software Full Stack Engineer – Enterprise APIs & AWS | Remote, India (Remote) | source=indeed
+01:43:51 - INFO - Scoring: processed=34/59 | scored=34 | failed=0 | OK | Senior Software Full Stack Engineer – Enterprise APIs & AWS | Remote, India (Remote) | source=indeed | fit=4/10
+01:43:51 - INFO - Scoring [35/59] START | Senior Software Developer | Remote, India (Remote) | source=indeed
+01:44:06 - INFO - Scoring: processed=35/59 | scored=35 | failed=0 | OK | Senior Software Developer | Remote, India (Remote) | source=indeed | fit=5/10
+01:44:06 - INFO - Scoring [36/59] START | Senior Software Engineer | Gurugram, Haryana, India | source=linkedin
+01:44:22 - INFO - Scoring: processed=36/59 | scored=36 | failed=0 | OK | Senior Software Engineer | Gurugram, Haryana, India | source=linkedin | fit=1/10
+01:44:22 - INFO - Scoring [37/59] START | Python Developer | Bengaluru, Karnataka, India | source=linkedin
+01:44:36 - INFO - Scoring: processed=37/59 | scored=37 | failed=0 | OK | Python Developer | Bengaluru, Karnataka, India | source=linkedin | fit=3/10
+01:44:36 - INFO - Scoring [38/59] START | Python Senior Developer | Bengaluru East, Karnataka, India | source=linkedin
+01:44:53 - INFO - Scoring: processed=38/59 | scored=38 | failed=0 | OK | Python Senior Developer | Bengaluru East, Karnataka, India | source=linkedin | fit=4/10
+01:44:53 - INFO - Scoring [39/59] START | Senior Back-End Developer - Python Developer | Bengaluru, Karnataka, India | source=linkedin
+01:45:10 - INFO - Scoring: processed=39/59 | scored=39 | failed=0 | OK | Senior Back-End Developer - Python Developer | Bengaluru, Karnataka, India | source=linkedin | fit=4/10
+01:45:10 - INFO - Scoring [40/59] START | Software Engineer – Python/Django | Gurugram, Haryana, India | source=linkedin
+01:45:27 - INFO - Scoring: processed=40/59 | scored=40 | failed=0 | OK | Software Engineer – Python/Django | Gurugram, Haryana, India | source=linkedin | fit=1/10
+01:45:27 - INFO - Scoring [41/59] START | Python developer IRC301400 | Noida, Uttar Pradesh, India | source=linkedin
+01:45:42 - INFO - Scoring: processed=41/59 | scored=41 | failed=0 | OK | Python developer IRC301400 | Noida, Uttar Pradesh, India | source=linkedin | fit=1/10
+01:45:42 - INFO - Scoring [42/59] START | Senior Software Engineer | Chennai, Tamil Nadu, India | source=linkedin
+01:45:54 - INFO - Scoring: processed=42/59 | scored=42 | failed=0 | OK | Senior Software Engineer | Chennai, Tamil Nadu, India | source=linkedin | fit=1/10
+01:45:54 - INFO - Scoring [43/59] START | Senior Python Developer | Ahmedabad, Gujarat, India | source=linkedin
+01:46:08 - INFO - Scoring: processed=43/59 | scored=43 | failed=0 | OK | Senior Python Developer | Ahmedabad, Gujarat, India | source=linkedin | fit=3/10
+01:46:08 - INFO - Scoring [44/59] START | Senior SDET (Manual + Playwright Automation) | Remote, India (Remote) | source=indeed
+01:46:22 - INFO - Scoring: processed=44/59 | scored=44 | failed=0 | OK | Senior SDET (Manual + Playwright Automation) | Remote, India (Remote) | source=indeed | fit=2/10
+01:46:22 - INFO - Scoring [45/59] START | Senior Software Engineer | KA, India (Remote) | source=indeed
+01:46:36 - INFO - Scoring: processed=45/59 | scored=45 | failed=0 | OK | Senior Software Engineer | KA, India (Remote) | source=indeed | fit=5/10
+01:46:36 - INFO - Scoring [46/59] START | Backend Developer Intern | Remote, India (Remote) | source=indeed
+01:46:51 - INFO - Scoring: processed=46/59 | scored=46 | failed=0 | OK | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10
+01:46:51 - INFO - Scoring [47/59] START | Full Stack Developer Intern | Remote, India (Remote) | source=indeed
+01:47:06 - INFO - Scoring: processed=47/59 | scored=47 | failed=0 | OK | Full Stack Developer Intern | Remote, India (Remote) | source=indeed | fit=8/10
+01:47:06 - INFO - Scoring [48/59] START | Senior MEAN/MERN Stack Developer | Remote, India (Remote) | source=indeed
+01:47:21 - INFO - Scoring: processed=48/59 | scored=48 | failed=0 | OK | Senior MEAN/MERN Stack Developer | Remote, India (Remote) | source=indeed | fit=5/10
+01:47:21 - INFO - Scoring [49/59] START | Director, Engineering - Marketplace & Dev Ecosystem | Remote, India (Remote) | source=indeed
+01:47:38 - INFO - Scoring: processed=49/59 | scored=49 | failed=0 | OK | Director, Engineering - Marketplace & Dev Ecosystem | Remote, India (Remote) | source=indeed | fit=2/10
+01:47:38 - INFO - Scoring [50/59] START | Sr Node.js Backend Developer | Chandigarh, India | source=linkedin
+01:47:51 - INFO - Scoring: processed=50/59 | scored=50 | failed=0 | OK | Sr Node.js Backend Developer | Chandigarh, India | source=linkedin | fit=1/10
+01:47:51 - INFO - Scoring [51/59] START | Senior Backend API Engineers | Hyderabad, Telangana, India | source=linkedin
+01:48:05 - INFO - Scoring: processed=51/59 | scored=51 | failed=0 | OK | Senior Backend API Engineers | Hyderabad, Telangana, India | source=linkedin | fit=1/10
+01:48:05 - INFO - Scoring [52/59] START | Javascript Developer | Delhi, India | source=linkedin
+01:48:20 - INFO - Scoring: processed=52/59 | scored=52 | failed=0 | OK | Javascript Developer | Delhi, India | source=linkedin | fit=4/10
+01:48:20 - INFO - Scoring [53/59] START | Senior Node.JS Developer | Bengaluru, Karnataka, India | source=linkedin
+a (Remote) | source=indeed
+01:46:51 - INFO - Scoring: processed=46/59 | scored=46 | failed=0 | OK | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10
+01:46:51 - INFO - Scoring [47/59] START | Full Stack Developer Intern | Remote, India (Remote) | source=indeed
+01:48:34 - INFO - Scoring: processed=53/59 | scored=53 | failed=0 | OK | Senior Node.JS Developer | Bengaluru, Karnataka, India | source=linkedin | fit=1/10
+01:48:34 - INFO - Scoring [54/59] START | Node Developer | Chennai, Tamil Nadu, India | source=linkedin
+01:48:52 - INFO - Scoring: processed=54/59 | scored=54 | failed=0 | OK | Node Developer | Chennai, Tamil Nadu, India | source=linkedin | fit=1/10
+01:48:52 - INFO - Scoring [55/59] START | Senior Node Js Developer | Hyderabad, Telangana, India | source=linkedin
+01:49:07 - INFO - Scoring: processed=55/59 | scored=55 | failed=0 | OK | Senior Node Js Developer | Hyderabad, Telangana, India | source=linkedin | fit=4/10
+01:49:07 - INFO - Scoring [56/59] START | Backend Engineer | Bengaluru East, Karnataka, India | source=linkedin
+01:49:22 - INFO - Scoring: processed=56/59 | scored=56 | failed=0 | OK | Backend Engineer | Bengaluru East, Karnataka, India | source=linkedin | fit=4/10
+01:49:22 - INFO - Scoring [57/59] START | Node.js Developer | Chennai, Tamil Nadu, India | source=linkedin
+01:49:38 - INFO - Scoring: processed=57/59 | scored=57 | failed=0 | OK | Node.js Developer | Chennai, Tamil Nadu, India | source=linkedin | fit=5/10
+01:49:38 - INFO - Scoring [58/59] START | Hiring for Sr. Backend Engineer (Node Js) | Chennai, Tamil Nadu, India | source=linkedin
+01:49:52 - INFO - Scoring: processed=58/59 | scored=58 | failed=0 | OK | Hiring for Sr. Backend Engineer (Node Js) | Chennai, Tamil Nadu, India | source=linkedin | fit=1/10
+01:49:52 - INFO - Scoring [59/59] START | SDE III, Backend | Hyderabad, Telangana, India | source=linkedin
+01:50:04 - INFO - Scoring: processed=59/59 | scored=59 | failed=0 | OK | SDE III, Backend | Hyderabad, Telangana, India | source=linkedin | fit=1/10
+01:50:04 - INFO - Done: 59 scored in 864.4s (0.1 jobs/sec)
+
+  Stage 'score' completed in 864.4s - ok
+
+======================================================================
+  STAGE: tailor - Resume tailoring (LLM + validation)
+  Started: 01:50:04
+======================================================================
+01:50:04 - INFO - Tailoring resumes for 10 jobs (score >= 7)...
+01:50:04 - INFO - Resumes: processed=0/10 | resumes_saved=0 | failed=0 | START
+01:50:04 - INFO - Resumes [1/10] START | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10
+01:50:37 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/indeed_Backend_Developer_Intern.pdf
+01:50:37 - INFO - Resumes: processed=1/10 | resumes_saved=1 | failed=0 | OK | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10 | status=approved | pdf=yes
+01:50:37 - INFO - Resumes [2/10] START | Back End Developer | India | source=linkedin | fit=8/10
+01:51:07 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Back_End_Developer.pdf
+01:51:07 - INFO - Resumes: processed=2/10 | resumes_saved=2 | failed=0 | OK | Back End Developer | India | source=linkedin | fit=8/10 | status=approved | pdf=yes
+01:51:07 - INFO - Resumes [3/10] START | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin | fit=8/10
+01:51:41 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Backend_Developer_Python__GenAI__LLM_Applications.pdf
+01:51:41 - INFO - Resumes: processed=3/10 | resumes_saved=3 | failed=0 | OK | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin | fit=8/10 | status=approved | pdf=yes
+01:51:41 - INFO - Resumes [4/10] START | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin | fit=8/10
+01:52:12 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Back_End_Developer_AI_Infrastructure.pdf
+01:52:12 - INFO - Resumes: processed=4/10 | resumes_saved=4 | failed=0 | OK | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin | fit=8/10 | status=approved | pdf=yes
+01:52:12 - INFO - Resumes [5/10] START | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin | fit=8/10
+01:52:44 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Back_End_Developer_AI_Infrastructure.pdf
+01:52:44 - INFO - Resumes: processed=5/10 | resumes_saved=5 | failed=0 | OK | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin | fit=8/10 | status=approved | pdf=yes
+01:52:44 - INFO - Resumes [6/10] START | Full Stack Developer Intern | Remote, India (Remote) | source=indeed | fit=8/10
+01:53:15 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/indeed_Full_Stack_Developer_Intern.pdf
+01:53:15 - INFO - Resumes: processed=6/10 | resumes_saved=6 | failed=0 | OK | Full Stack Developer Intern | Remote, India (Remote) | source=indeed | fit=8/10 | status=approved | pdf=yes
+01:53:15 - INFO - Resumes [7/10] START | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin | fit=7/10
+01:53:51 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Senior_Software_Engineer_Remote__30100hr.pdf
+01:53:51 - INFO - Resumes: processed=7/10 | resumes_saved=7 | failed=0 | OK | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin | fit=7/10 | status=approved | pdf=yes
+01:53:51 - INFO - Resumes [8/10] START | API Developer | Kerala, India | source=linkedin | fit=7/10
+01:54:21 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_API_Developer.pdf
+01:54:21 - INFO - Resumes: processed=8/10 | resumes_saved=8 | failed=0 | OK | API Developer | Kerala, India | source=linkedin | fit=7/10 | status=approved | pdf=yes
+01:54:21 - INFO - Resumes [9/10] START | Backend Engineer | Remote | India (Remote) | source=linkedin | fit=7/10
+01:54:51 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/linkedin_Backend_Engineer__Remote.pdf
+01:54:51 - INFO - Resumes: processed=9/10 | resumes_saved=9 | failed=0 | OK | Backend Engineer | Remote | India (Remote) | source=linkedin | fit=7/10 | status=approved | pdf=yes
+01:54:51 - INFO - Resumes [10/10] START | Java Full Stack Developer | Remote, India (Remote) | source=indeed | fit=7/10
+01:55:21 - INFO - PDF generated: /Users/akash/.applypilot/tailored_resumes/indeed_Java_Full_Stack_Developer.pdf
+01:55:21 - INFO - Resumes: processed=10/10 | resumes_saved=10 | failed=0 | OK | Java Full Stack Developer | Remote, India (Remote) | source=indeed | fit=7/10 | status=approved | pdf=yes
+01:55:21 - INFO - Tailoring done in 316.9s: 10 approved, 0 failed_validation, 0 failed_judge, 0 errors
+
+  Stage 'tailor' completed in 316.9s - ok
+
+======================================================================
+  STAGE: cover - Cover letter generation
+  Started: 01:55:21
+======================================================================
+01:55:21 - INFO - Generating cover letters for 10 jobs (score >= 7)...
+01:55:21 - INFO - Cover letters: processed=0/10 | letters_saved=0 | failed=0 | START
+01:55:21 - INFO - Cover letters [1/10] START | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10
+01:55:37 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/indeed_Backend_Developer_Intern_CL.pdf
+01:55:37 - INFO - Cover letters: processed=1/10 | letters_saved=1 | failed=0 | OK | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10 | pdf=yes
+01:55:37 - INFO - Cover letters [2/10] START | Full Stack Developer Intern | Remote, India (Remote) | source=indeed | fit=8/10
+01:55:54 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/indeed_Full_Stack_Developer_Intern_CL.pdf
+01:55:54 - INFO - Cover letters: processed=2/10 | letters_saved=2 | failed=0 | OK | Full Stack Developer Intern | Remote, India (Remote) | source=indeed | fit=8/10 | pdf=yes
+01:55:54 - INFO - Cover letters [3/10] START | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin | fit=8/10
+01:56:11 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Back_End_Developer_AI_Infrastructure_CL.pdf
+01:56:11 - INFO - Cover letters: processed=3/10 | letters_saved=3 | failed=0 | OK | Back End Developer (AI Infrastructure) | Ahmedabad, Gujarat, India | source=linkedin | fit=8/10 | pdf=yes
+01:56:11 - INFO - Cover letters [4/10] START | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin | fit=8/10
+01:56:31 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Back_End_Developer_AI_Infrastructure_CL.pdf
+01:56:31 - INFO - Cover letters: processed=4/10 | letters_saved=4 | failed=0 | OK | Back End Developer (AI Infrastructure) | Pune Division, Maharashtra, India | source=linkedin | fit=8/10 | pdf=yes
+01:56:31 - INFO - Cover letters [5/10] START | Back End Developer | India | source=linkedin | fit=8/10
+01:56:47 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Back_End_Developer_CL.pdf
+01:56:47 - INFO - Cover letters: processed=5/10 | letters_saved=5 | failed=0 | OK | Back End Developer | India | source=linkedin | fit=8/10 | pdf=yes
+01:56:47 - INFO - Cover letters [6/10] START | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin | fit=8/10
+01:57:03 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Backend_Developer_Python__GenAI__LLM_Applications_CL.pdf
+01:57:03 - INFO - Cover letters: processed=6/10 | letters_saved=6 | failed=0 | OK | Backend Developer (Python) – GenAI & LLM Applications | India | source=linkedin | fit=8/10 | pdf=yes
+01:57:03 - INFO - Cover letters [7/10] START | Java Full Stack Developer | Remote, India (Remote) | source=indeed | fit=7/10
+01:57:23 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/indeed_Java_Full_Stack_Developer_CL.pdf
+01:57:23 - INFO - Cover letters: processed=7/10 | letters_saved=7 | failed=0 | OK | Java Full Stack Developer | Remote, India (Remote) | source=indeed | fit=7/10 | pdf=yes
+01:57:23 - INFO - Cover letters [8/10] START | API Developer | Kerala, India | source=linkedin | fit=7/10
+01:57:43 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_API_Developer_CL.pdf
+01:57:43 - INFO - Cover letters: processed=8/10 | letters_saved=8 | failed=0 | OK | API Developer | Kerala, India | source=linkedin | fit=7/10 | pdf=yes
+01:57:43 - INFO - Cover letters [9/10] START | Backend Engineer | Remote | India (Remote) | source=linkedin | fit=7/10
+01:57:58 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Backend_Engineer__Remote_CL.pdf
+01:57:58 - INFO - Cover letters: processed=9/10 | letters_saved=9 | failed=0 | OK | Backend Engineer | Remote | India (Remote) | source=linkedin | fit=7/10 | pdf=yes
+01:57:58 - INFO - Cover letters [10/10] START | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin | fit=7/10
+01:58:16 - INFO - PDF generated: /Users/akash/.applypilot/cover_letters/linkedin_Senior_Software_Engineer_Remote__30100hr_CL.pdf
+01:58:16 - INFO - Cover letters: processed=10/10 | letters_saved=10 | failed=0 | OK | Senior Software Engineer (Remote | $30–$100/hr) | India (Remote) | source=linkedin | fit=7/10 | pdf=yes
+01:58:16 - INFO - Cover letters done in 174.3s: 10 generated, 0 errors
+
+  Stage 'cover' completed in 174.3s - ok
+
+======================================================================
+  STAGE: pdf - PDF conversion (tailored resumes + cover letters)
+  Started: 01:58:16
+======================================================================
+01:58:16 - INFO - All text files already have PDFs.
+
+  Stage 'pdf' completed in 0.0s - ok
+
+======================================================================
+      Pipeline Summary       
+┏━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┓
+┃ Stage  ┃ Status ┃    Time ┃
+┡━━━━━━━━╇━━━━━━━━╇━━━━━━━━━┩
+│ score  │ ok     │  864.4s │
+│ tailor │ ok     │  316.9s │
+│ cover  │ ok     │  174.3s │
+│ pdf    │ ok     │    0.0s │
+│        │        │         │
+│ Total  │        │ 1355.6s │
+└────────┴────────┴─────────┘
+
+  DB Final State:
+    Total jobs:     95
+    With desc:      94
+    Scored:         94
+    Tailored:       10
+    Cover letters:  10
+    Ready to apply: 0
+    Applied:        0
+======================================================================
+
+akash@Workstation ~ % a (Remote) | source=indeed
+zsh: missing end of string
+akash@Workstation ~ % 01:46:51 - INFO - Scoring: processed=46/59 | scored=46 | failed=0 | OK | Backend Developer Intern | Remote, India (Remote) | source=indeed | fit=9/10
+zsh: missing end of string
+zsh: command not found: Backend
+zsh: command not found: OK
+zsh: command not found: 01:46:51
+akash@Workstation ~ % 01:46:51 - INFO - Scoring [47/59] START | Full Stack Developer Intern | Remote, India (Remote) | source=indeed
+zsh: missing end of string
+zsh: no matches found: [47/59]
+zsh: command not found: Full
+akash@Workstation ~ % 

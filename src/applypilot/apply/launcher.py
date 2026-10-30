@@ -22,6 +22,7 @@ from applypilot import config
 from applypilot.apply import prompt as prompt_mod
 from applypilot.apply.chrome import (
     BASE_CDP_PORT,
+    ChromeStartupError,
     cleanup_worker,
     kill_all_chrome,
     launch_chrome,
@@ -532,6 +533,11 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
                 break
             add_event(f"[W{worker_id}] Job skipped (Ctrl+C)")
             continue
+        except ChromeStartupError as e:
+            logger.error('[W%d] Browser startup failed: %s', worker_id, e)
+            add_event(f'[W{worker_id}] Browser startup failed; batch stopped')
+            release_lock(job['url'], job.get('apply_status'))
+            break
         except Exception as e:
             logger.exception("Worker %d launcher error", worker_id)
             add_event(f"[W{worker_id}] Launcher error: {str(e)[:40]}")

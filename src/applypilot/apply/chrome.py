@@ -13,6 +13,8 @@ import threading
 import time
 from pathlib import Path
 
+import httpx
+
 from applypilot import config
 
 logger = logging.getLogger(__name__)
@@ -23,6 +25,31 @@ BASE_CDP_PORT = 9222
 # Track Chrome processes per worker for cleanup
 _chrome_procs: dict[int, subprocess.Popen] = {}
 _chrome_lock = threading.Lock()
+
+
+class ChromeStartupError(RuntimeError):
+    """Chrome did not expose the worker's automation endpoint."""
+
+
+def _wait_for_debugging(process: subprocess.Popen, port: int, profile: Path, timeout: float = 15) -> None:
+    """Check process ownership and CDP readiness before starting an agent."""
+    deadline = time.monotonic() + timeout
+    hint = (
+        f"Close the manually opened Chrome instance using {profile}, then restart ApplyPilot. "
+        "The worker profile cannot be shared with a running manual browser."
+    )
+    with httpx.Client(trust_env=False, timeout=0.5) as client:
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                raise ChromeStartupError(f"Chrome exited before automation port {port} was ready. {hint}")
+            try:
+                response = client.get(f'http://127.0.0.1:{port}/json/version')
+                if response.is_success and response.json().get('webSocketDebuggerUrl'):
+                    return
+            except (httpx.HTTPError, ValueError):
+                pass
+            time.sleep(0.1)
+    raise ChromeStartupError(f"Chrome automation port {port} did not become ready within {timeout:g}s. {hint}")
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +245,7 @@ def launch_chrome(worker_id: int, port: int | None = None,
         "--profile-directory=Default",
         "--no-first-run",
         "--no-default-browser-check",
-        "--window-size=1024,768",
+        f"--window-size={config.DEFAULTS['viewport'].replace('x', ',')}",
         "--disable-session-crashed-bubble",
         "--disable-features=InfiniteSessionRestore,PasswordManagerOnboarding",
         "--hide-crash-restore-bubble",
@@ -244,8 +271,11 @@ def launch_chrome(worker_id: int, port: int | None = None,
     with _chrome_lock:
         _chrome_procs[worker_id] = proc
 
-    # Give Chrome time to start and open the debug port
-    time.sleep(3)
+    try:
+        _wait_for_debugging(proc, port, profile_dir)
+    except BaseException:
+        cleanup_worker(worker_id, proc)
+        raise
     logger.info("[worker-%d] Chrome started on port %d (pid %d)",
                 worker_id, port, proc.pid)
     return proc

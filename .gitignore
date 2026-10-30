@@ -42,3 +42,6 @@ Thumbs.db
 
 # Claude Code
 .claude/
+
+secrets
+temp

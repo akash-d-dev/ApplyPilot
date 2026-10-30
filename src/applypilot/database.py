@@ -16,6 +16,11 @@ from applypilot.config import DB_PATH
 # (required for SQLite thread safety with parallel workers)
 _local = threading.local()
 
+PENDING_APPLY_WHERE = (
+    "tailored_resume_path IS NOT NULL AND applied_at IS NULL "
+    "AND (NULLIF(TRIM(application_url), '') IS NOT NULL OR NULLIF(TRIM(url), '') IS NOT NULL)"
+)
+
 
 def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
     """Get a thread-local cached SQLite connection with WAL mode enabled.
@@ -321,10 +326,7 @@ def get_stats(conn: sqlite3.Connection | None = None) -> dict:
     ).fetchone()[0]
 
     stats["ready_to_apply"] = conn.execute(
-        "SELECT COUNT(*) FROM jobs "
-        "WHERE tailored_resume_path IS NOT NULL "
-        "AND applied_at IS NULL "
-        "AND application_url IS NOT NULL"
+        f"SELECT COUNT(*) FROM jobs WHERE {PENDING_APPLY_WHERE}"
     ).fetchone()[0]
 
     return stats
@@ -395,10 +397,7 @@ def get_jobs_by_stage(conn: sqlite3.Connection | None = None,
             "AND tailored_resume_path IS NULL AND COALESCE(tailor_attempts, 0) < 5"
         ),
         "tailored": "tailored_resume_path IS NOT NULL",
-        "pending_apply": (
-            "tailored_resume_path IS NOT NULL AND applied_at IS NULL "
-            "AND application_url IS NOT NULL"
-        ),
+        "pending_apply": PENDING_APPLY_WHERE,
         "applied": "applied_at IS NOT NULL",
     }
 

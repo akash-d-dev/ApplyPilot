@@ -5,6 +5,7 @@ and exports to PDF using headless Chromium via Playwright.
 """
 
 import logging
+from html import escape
 from pathlib import Path
 
 from applypilot.config import TAILORED_DIR
@@ -333,6 +334,27 @@ li {{
 
 # ── PDF Renderer ─────────────────────────────────────────────────────────
 
+def build_cover_letter_html(text: str) -> str:
+    """Render letter paragraphs and signature without parsing resume sections."""
+    paragraphs = '\n'.join(
+        f'<p>{escape(paragraph.strip())}</p>'
+        for paragraph in text.split('\n\n') if paragraph.strip()
+    )
+    return f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cover letter</title>
+<style>
+@page {{ size: Letter; margin: 0.75in; }}
+body {{ margin: 0; color: #222; font: 11pt/1.5 Arial, sans-serif; text-align: left; }}
+p {{ margin: 0 0 14pt; white-space: pre-line; overflow-wrap: break-word; }}
+</style>
+</head>
+<body>{paragraphs}</body>
+</html>'''
+
+
 def render_pdf(html: str, output_path: str) -> None:
     """Render HTML to PDF using Playwright's headless Chromium.
 
@@ -362,6 +384,8 @@ def convert_to_pdf(
 ) -> Path:
     """Convert a text resume/cover letter to PDF.
 
+    Filenames ending in _CL use the letter layout; other files use the resume layout.
+
     Args:
         text_path: Path to the .txt file to convert.
         output_path: Optional override for the output path. Defaults to same
@@ -373,8 +397,10 @@ def convert_to_pdf(
     """
     text_path = Path(text_path)
     text = text_path.read_text(encoding="utf-8")
-    resume = parse_resume(text)
-    html = build_html(resume)
+    if text_path.stem.endswith('_CL'):
+        html = build_cover_letter_html(text)
+    else:
+        html = build_html(parse_resume(text))
 
     if html_only:
         out = output_path or text_path.with_suffix(".html")

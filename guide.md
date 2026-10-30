@@ -106,12 +106,32 @@ applypilot apply --agent cursor --limit 1
 ```
 
 Chrome opens, Cursor fills an eligible application, and the run stops without final submission.
+Activate the venv from step 1 first; this browser stage runs separately from `start_applypilot.command`.
+Omit `--headless` to keep Chrome visible.
+Chrome and Playwright use the same 1440 × 900 size setting for a larger laptop view.
+Long forms still require scrolling; a larger window does not make the whole application visible at once.
 The browser closes after the worker finishes.
 Review the screenshot and execution summary under `~/.applypilot/logs/`.
+The agent reuses an existing resume on the website when it belongs to you and its displayed upload/update age is reliably under 24 hours.
+If the age is unknown, 24 hours or older, or the website requires a new file, it uploads the prepared PDF instead.
+This rule also applies to resume-parsing pages before the main application form.
 
 Successful previews are recorded as `previewed`, not `applied`.
 Later preview runs skip those jobs, while submission runs can select them.
 Previews do not increase failure-attempt counts.
+
+Login attempts first reuse the website session saved in that worker's Chrome profile.
+If needed, the agent first tries Continue with LinkedIn using the existing LinkedIn session, then Continue with Google using an already signed-in Google account matching your profile email.
+It then falls back to a fresh email code or sign-in link through Gmail MCP, followed by a configured website password.
+Google password entry, 2FA, account recovery, and new OAuth consent require manual login in the worker profile.
+LinkedIn identity/profile/email consent is allowed for the legitimate job portal; posting, messaging, contacts and unrelated permissions are forbidden.
+If all login methods fail, `JOB_PORTAL_SIGNUP=1` and a configured `JOB_PORTAL_PASSWORD` allow account creation on the job portal or employer ATS for the vacancy.
+The account uses the email in your profile and the configured portal password, with fresh email verification through Gmail MCP.
+Existing-account notices return to login instead of creating duplicates or resetting passwords.
+If the site rejects the configured password, the agent stops rather than inventing another password.
+Registration is permitted in preview mode, but submitting the job application still requires `--submit`.
+The agent never creates a LinkedIn or Google account.
+The portal password belongs in the owner-only local `.env`; it is redacted from application logs.
 
 To target a particular job already stored in the database with a prepared resume:
 
@@ -170,6 +190,11 @@ Previews increment `previewed` instead, and failures increment `failed`.
 These shared counts include all parallel browser workers.
 Saved totals are shown separately from the counters for the current run.
 
+`Ready to apply` counts prepared, unsubmitted jobs with a direct application URL or an original listing URL.
+The browser agent can open the listing and follow its Apply link when no direct application URL was scraped.
+This count does not guarantee an open vacancy, an accessible form, or successful submission.
+New document filenames include a stable job identifier, so matching titles cannot overwrite each other's resumes or cover letters.
+
 The `start_applypilot.command` launcher prepares documents; its applied count remains zero because it does not submit applications.
 An already running process needs a restart to load logging changes.
 
@@ -216,6 +241,7 @@ The selected model must be available to your Cursor key.
 | Cursor authentication error | Run `applypilot configure-cursor` with a working user or service-account key |
 | Cursor model unavailable | Set an accessible model in `.env` or pass `--model` for the browser stage |
 | Chrome not found | Install Chrome or set `CHROME_PATH` to its executable |
+| Chrome opens but Playwright cannot connect | Close the manually opened Chrome instance using the worker profile, then restart ApplyPilot; the app now checks its debugging connection before starting the agent |
 | `npx` missing | Install Node.js, open a new terminal, and activate the venv again |
 | Playwright browser missing | Run `python -m playwright install chromium` inside the venv |
 | Email verification fails | Configure the existing Gmail MCP authentication or complete the application manually |

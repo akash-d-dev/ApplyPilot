@@ -167,7 +167,7 @@ DEFAULTS = {
     "max_tailor_attempts": 5,
     "poll_interval": 60,
     "apply_timeout": 300,
-    "viewport": "1280x900",
+    "viewport": "1440x900",
 }
 
 

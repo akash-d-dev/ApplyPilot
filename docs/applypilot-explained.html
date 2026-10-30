@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ApplyPilot | Workflow, architecture & Gmail</title>
+<style>
+:root{color-scheme:light;--bg:#f4f6fa;--paper:#fff;--text:#182437;--muted:#52647b;--line:#dce3ed;--accent:#155bd7;--soft:#eaf1ff;--green:#17724f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 system-ui,-apple-system,sans-serif}a{color:var(--accent)}header{background:#14243a;color:#fff;padding:52px max(24px,calc((100vw - 1120px)/2)) 38px}header p{color:#c5d2e4;max-width:760px}h1{font-size:clamp(30px,4vw,48px);line-height:1.15;margin:12px 0 20px;letter-spacing:-1.5px}h2{font-size:27px;line-height:1.3;margin:0 0 12px}h3{font-size:18px;line-height:1.4;margin:0 0 9px}p{margin:0 0 14px}.eyebrow{font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:700}.tag{display:inline-block;border:1px solid #50637b;border-radius:30px;padding:4px 12px;margin:6px 6px 0 0;font-size:13px}nav{position:sticky;top:0;z-index:2;background:var(--paper);border-bottom:1px solid var(--line);padding:14px 24px;display:flex;justify-content:center;gap:28px;flex-wrap:wrap}nav a{font-weight:600;text-decoration:none;font-size:14px}main{max-width:1120px;margin:auto;padding:35px 24px 70px}section{scroll-margin-top:90px;margin-bottom:48px}.intro{max-width:800px;color:var(--muted)}.card{background:var(--paper);border:1px solid var(--line);border-radius:15px;padding:24px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin:20px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.label{color:var(--accent);font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase}.flow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:22px 0 12px}.stage{font:inherit;text-align:left;cursor:pointer;border:1px solid var(--line);border-radius:12px;background:var(--paper);color:var(--text);padding:16px 12px;min-height:115px}.stage small{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}.stage strong{font-size:14px}.stage[aria-pressed=true]{border-color:var(--accent);background:var(--soft)}button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.detail{border-left:4px solid var(--accent);min-height:156px}.subtle{font-size:14px;color:var(--muted)}.diagram{display:grid;grid-template-columns:1fr 44px 1fr;align-items:center;gap:12px;margin:24px 0}.arrow{text-align:center;color:var(--muted);font-size:28px}.diagram .card{height:100%}.diagram .wide{grid-column:1/-1}.pill{display:inline-block;background:var(--soft);border-radius:6px;padding:3px 9px;font-size:13px;margin:3px}.command{position:relative;margin:16px 0}pre{background:#14243a;color:#e3ecfa;padding:22px 18px;border-radius:10px;overflow-x:auto;font:13px/1.8 ui-monospace,SFMono-Regular,monospace;white-space:pre-wrap;overflow-wrap:anywhere}code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.88em}button.copy{position:absolute;right:9px;top:8px;border:1px solid #60718b;background:#243a58;color:#fff;border-radius:6px;padding:4px 9px;cursor:pointer}.notice{border-left:4px solid var(--accent);padding:15px 20px;background:var(--soft);border-radius:0 10px 10px 0;margin:18px 0}.notice p:last-child,.card p:last-child{margin-bottom:0}table{width:100%;border-collapse:collapse;margin:20px 0;font-size:14px}th,td{text-align:left;border-bottom:1px solid var(--line);padding:13px 12px;vertical-align:top}th{background:#eaf0f8}td:first-child{font-weight:600}ol{padding-left:24px}li{margin:12px 0}.steps{counter-reset:steps;list-style:none;padding:0}.steps>li{counter-increment:steps;position:relative;padding:0 0 22px 48px;margin:0}.steps>li:before{content:counter(steps);position:absolute;left:0;top:0;border-radius:50%;background:var(--soft);color:var(--accent);width:30px;height:30px;display:grid;place-items:center;font-weight:700}details{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:12px 0}summary{cursor:pointer;font-weight:600}details p{margin-top:12px}footer{border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:13px}.mode-toggle{display:flex;gap:8px;margin:15px 0}.mode-toggle button{font:inherit;padding:8px 16px;border:1px solid var(--line);background:var(--paper);color:var(--text);border-radius:8px;cursor:pointer}.mode-toggle [aria-pressed=true]{background:var(--accent);color:#fff;border-color:var(--accent)}.nowrap{white-space:nowrap}
+@media(max-width:760px){.grid,.grid.three{grid-template-columns:1fr}.flow{grid-template-columns:repeat(3,1fr)}.diagram{grid-template-columns:1fr}.diagram .wide{grid-column:auto}.arrow{transform:rotate(90deg)}nav{gap:14px;padding:12px}main{padding:25px 16px}header{padding:36px 20px}table{display:block;overflow-x:auto}.card{padding:19px}}
+@media print{nav,button.copy,.mode-toggle{display:none}body{background:white}header{background:white;color:#182437;padding:15px 0}header p{color:#52647b}main{padding:0;max-width:none}section{break-inside:auto;margin-bottom:25px}.card,table,tr,details{break-inside:avoid}pre{background:#f0f3f8;color:#182437}a{color:inherit}details>*{display:block}footer{margin-top:20px}}
+</style>
+</head>
+<body>
+<header>
+<div class="eyebrow">Your local setup · 31 October 2026</div>
+<h1>From job listing<br>to application.</h1>
+<p>A guide to how ApplyPilot prepares applications, how Cursor controls the browser, and how Gmail MCP supplies email verification codes.</p>
+<span class="tag">Python + SQLite</span><span class="tag">Cursor Python SDK</span><span class="tag">Composer 2.5 · fast=false</span><span class="tag">Local Chrome + MCP</span>
+</header>
+<nav aria-label="Guide sections"><a href="#overview">Overview</a><a href="#workflow">Workflow</a><a href="#architecture">Architecture</a><a href="#gmail">Gmail setup</a><a href="#commands">Commands</a><a href="#files">Files & limits</a></nav>
+<main>
+<section id="overview">
+<div class="label">01 / Big picture</div><h2>Two separate phases</h2>
+<p class="intro">Preparation produces job-specific documents.
+The browser phase visits the application website, handles supported login steps, fills fields, uploads documents, and optionally submits.</p>
+<div class="grid">
+<article class="card"><div class="label">Prepare</div><h3>Find → understand → write</h3><p>Job scrapers collect listings.
+Cursor scores them against your resume and preferences, then creates tailored resumes and cover letters for qualifying jobs.
+Playwright renders PDFs.</p><p class="subtle"><code>applypilot run</code> or the existing <code>start_applypilot.command</code> launcher.</p></article>
+<article class="card"><div class="label">Act</div><h3>Open → log in → fill → review or submit</h3><p>A separate browser agent reads the prepared job, controls Chrome through Playwright MCP, and uses Gmail MCP if an email code is needed.</p><p class="subtle"><code>applypilot apply --agent cursor</code> previews by default.
+Adding <code>--submit</code> enables real submissions.</p></article>
+</div>
+<p class="notice">Your target configuration: backend roles, remote from India, with full-time, part-time and contract roles allowed.
+The profile records six months of full-time experience separately from 2.5 years of internships.
+Unknown applicant facts must not be invented.</p>
+</section>
+<section id="workflow">
+<div class="label">02 / Preparation workflow</div><h2>Six stages, saved between runs</h2>
+<p class="intro">Select a stage to see its input, work, output, and whether it uses AI.</p>
+<div class="flow" aria-label="Preparation stages">
+<button class="stage" data-stage="discover" aria-pressed="true"><small>01</small><strong>Discover →</strong></button>
+<button class="stage" data-stage="enrich" aria-pressed="false"><small>02</small><strong>Enrich →</strong></button>
+<button class="stage" data-stage="score" aria-pressed="false"><small>03</small><strong>Score →</strong></button>
+<button class="stage" data-stage="tailor" aria-pressed="false"><small>04</small><strong>Tailor →</strong></button>
+<button class="stage" data-stage="cover" aria-pressed="false"><small>05</small><strong>Cover letter →</strong></button>
+<button class="stage" data-stage="pdf" aria-pressed="false"><small>06</small><strong>PDF</strong></button>
+</div>
+<article class="card detail" id="stage-detail" aria-live="polite"><h3>Discover</h3><p>Reads searches.yaml and scrapes matching job listings.</p></article>
+<p class="subtle">The preparation run you shared scored 94 of 95 jobs and prepared 10 application sets at a minimum score of 7/10.
+One listing lacked a full description.
+Those are historical run results, not a live dashboard.</p>
+<p class="notice">Resume reuse: when a resume already on the website belongs to the applicant and its displayed upload/update age is reliably under 24 hours, select it instead of uploading again.
+Unknown age, an age of 24 hours or more, or a mandatory new upload falls back to the prepared PDF.
+The rule applies to resume-parsing pages too; local file timestamps do not establish the age of a website attachment.</p>
+<h3>Then the browser phase begins</h3>
+<div class="mode-toggle" aria-label="Application mode"><button data-mode="preview" aria-pressed="true">Preview</button><button data-mode="submit" aria-pressed="false">Submit</button></div>
+<article class="card detail" id="mode-detail" aria-live="polite"></article>
+<table><thead><tr><th>Recorded result</th><th>Meaning</th><th>Next run</th></tr></thead><tbody>
+<tr><td>Scored / prepared</td><td>Job evaluated or documents created.</td><td>No application has been submitted by these stages.</td></tr>
+<tr><td><code>previewed</code></td><td>Form filled for review; screenshot captured.</td><td>Skipped by the normal preview queue; still eligible for explicit submission.</td></tr>
+<tr><td><code>applied</code></td><td>Agent reports the application was submitted successfully; <code>applied_at</code> is set.</td><td>Not selected again by the normal queue.</td></tr>
+<tr><td>Login failure / other failure</td><td>Browser could not finish the application.</td><td>Failed submission runs are not automatically retried.
+Use an explicit URL or reset failed records after checking the outcome.</td></tr>
+</tbody></table>
+<p class="subtle">“Applied” is an automation result, not independent proof that an employer accepted or reviewed an application.</p>
+</section>
+<section id="architecture">
+<div class="label">03 / Architecture</div><h2>Python coordinates; Cursor decides; MCP executes</h2>
+<div class="diagram" aria-label="Architecture diagram">
+<article class="card wide"><div class="label">Entry point</div><h3>Terminal → ApplyPilot CLI → orchestration</h3><p><code>cli.py</code> loads configuration and chooses the command.
+<code>pipeline.py</code> runs preparation stages.
+<code>apply/launcher.py</code> selects and locks jobs, starts workers, records results and manages cleanup.</p></article>
+<article class="card"><h3>Text path</h3><p>Scoring, tailoring and cover-letter modules call the shared <code>chat()</code> / <code>ask()</code> interface.</p><p>For Cursor, <code>cursor_client.py</code> launches the SDK bridge and creates a fresh tool-free agent for each request.
+Output is parsed and checked by the existing validators.</p><span class="pill">No browser tools in text stages</span></article>
+<div class="arrow" aria-hidden="true">↔</div>
+<article class="card"><h3>Shared local state</h3><p>SQLite stores job URLs, descriptions, scores, document paths, attempts and application results.</p><p>The profile, master resume, search configuration and generated files live under <code>~/.applypilot/</code>.</p><span class="pill">Saved per completed job</span></article>
+<article class="card"><h3>Browser path</h3><p><code>apply/agents.py</code> starts a managed Python subprocess using the venv interpreter.
+<code>cursor_runner.py</code> runs a Cursor agent with MCP tools enabled and streams normalized events back to the dashboard.</p><p>Composer 2.5 explicitly receives <code>fast=false</code> in both text and browser paths.</p></article>
+<div class="arrow" aria-hidden="true">→</div>
+<article class="card"><h3>MCP tool servers</h3><p><strong>Playwright MCP:</strong> Node process connected to that worker's Chrome debugging port.
+It navigates, inspects, fills, clicks and uploads files.</p><p><strong>Gmail MCP:</strong> Node process using saved Google OAuth credentials.
+It exposes email search and read tools for login verification.</p></article>
+<article class="card wide"><h3>Website + Gmail API</h3><p>Chrome interacts with the employer or job board.
+Gmail MCP calls Google's Gmail API.
+Cursor chooses tool calls; it does not receive the Google OAuth client file as part of the applicant prompt.</p></article>
+</div>
+<div class="grid three"><article class="card"><h3>Worker isolation</h3><p>Each worker has a Chrome profile, debugging port, working directory and upload folder.
+SQLite transactions claim jobs atomically so workers do not select the same job.</p></article><article class="card"><h3>Deadlines & cleanup</h3><p>Browser runs have a 300-second deadline.
+The managed runner supports cancellation and subprocess cleanup for timeout, skip and shutdown.</p></article><article class="card"><h3>Progress without extra AI</h3><p>Titles, source, location, scores and counters come from existing records.
+Progress logging makes no extra model requests.
+Preview counts and submitted counts remain separate.</p></article></div>
+<details><summary>Code map</summary><table><thead><tr><th>File or directory under src/applypilot/</th><th>Responsibility</th></tr></thead><tbody>
+<tr><td><code>cli.py / config.py / providers.py</code></td><td>Commands, paths, defaults, provider and model selection.</td></tr>
+<tr><td><code>database.py</code></td><td>SQLite schema, connections, statistics and stage queries.</td></tr>
+<tr><td><code>discovery/ / enrichment/</code></td><td>Find job listings and complete descriptions or application links.</td></tr>
+<tr><td><code>scoring/</code></td><td>Fit scoring, resume tailoring, letters, validation, document filenames and PDF rendering.</td></tr>
+<tr><td><code>llm.py / cursor_client.py</code></td><td>Common text-model interface and Cursor SDK adapter.</td></tr>
+<tr><td><code>apply/launcher.py / agents.py</code></td><td>Browser job queue, subprocesses, deadlines, events and results.</td></tr>
+<tr><td><code>apply/cursor_runner.py / cursor_hook.py</code></td><td>Cursor browser execution and Gmail tool restrictions.</td></tr>
+<tr><td><code>apply/chrome.py / prompt.py / dashboard.py</code></td><td>Chrome profiles, application instructions and terminal dashboard.</td></tr>
+</tbody></table></details>
+</section>
+<section id="gmail">
+<div class="label">04 / What we actually set up</div><h2>Gmail MCP: one-time authorization, then reusable access</h2>
+<p class="intro">The failed Indeed login offered “Sign in with a code instead”.
+It sent an OTP, but Gmail MCP could not read it because credentials had not been configured.
+We used the app's existing Gmail MCP integration, not a new custom server.</p>
+<ol class="steps">
+<li><h3>Created a Google Cloud project and enabled Gmail API</h3><p>This gives the OAuth client a project where the Gmail API is available.
+The consent setup uses an External audience with your Gmail account added as a test user.</p></li>
+<li><h3>Created an OAuth client: Desktop app → ApplyPilot</h3><p>You checked “Use this client for an AI-powered agent”.
+That designates the client's intended use; actual Gmail access comes from the OAuth scopes requested during consent.</p><p>You saved the downloaded client JSON at:</p><pre>/Users/akash/Desktop/projects/ApplyPilot/secrets/gmail-oauth.json</pre></li>
+<li><h3>Placed the client JSON where this MCP server expects it</h3><div class="command"><button class="copy" type="button">Copy</button><pre>mkdir -p ~/.gmail-mcp
+chmod 700 ~/.gmail-mcp
+cp /Users/akash/Desktop/projects/ApplyPilot/secrets/gmail-oauth.json ~/.gmail-mcp/gcp-oauth.keys.json
+chmod 600 ~/.gmail-mcp/gcp-oauth.keys.json</pre></div><p class="subtle">The folder is accessible only to your user.
+The client JSON is readable and writable only by your user.
+The repository's secrets directory is ignored by Git.</p></li>
+<li><h3>Ran the existing server's authentication command</h3><div class="command"><button class="copy" type="button">Copy</button><pre>npx -y @gongrzhe/server-gmail-autoauth-mcp@1.1.11 auth</pre></div><p>The server opened Google's consent page.
+You authenticated with your Gmail account and authorized access.
+Google redirected the browser to <code>http://localhost:3000/oauth2callback</code>, where the local auth process exchanged the authorization code for tokens.</p></li>
+<li><h3>Saved the resulting tokens and tightened permissions</h3><p>The server printed <strong>Authentication completed successfully</strong> and saved its credentials file.</p><div class="command"><button class="copy" type="button">Copy</button><pre>chmod 600 ~/.gmail-mcp/credentials.json</pre></div><p><code>gcp-oauth.keys.json</code> identifies the OAuth application.
+<code>credentials.json</code> contains the access/refresh credentials produced after your consent.
+The latter allows later MCP runs to access Gmail without a new manual sign-in while authorization remains valid.</p></li>
+<li><h3>Retried the application queue</h3><p>The first job had been marked <code>login_issue</code> and excluded from automatic submission retries.
+We reset that failed record so it could be selected first again.
+This reset did not remove scores, resumes or cover letters.</p></li>
+</ol>
+<p class="notice">Login order: reuse the saved website session, then try Continue with LinkedIn using the existing applicant session, followed by Continue with Google using an already signed-in account matching the applicant email.
+If that cannot finish, use a fresh website email code/link through Gmail MCP, followed by a configured website password.
+Google password entry, 2FA, recovery and new OAuth consent remain manual.
+If login methods fail, explicitly enabled job-portal signup uses the profile email and locally configured portal password, then Gmail MCP completes email verification.
+Existing accounts are not duplicated, and rejected passwords are not silently replaced.
+LinkedIn basic identity/profile/email consent is allowed for the job portal, but posting, messaging and contacts permissions are forbidden.
+No LinkedIn or Google account is created.
+Portal registration may happen in preview mode; application submission still requires --submit.</p>
+<div class="grid"><article class="card"><h3>At runtime</h3><p>1. The browser requests an email code from the job website.<br>2. Cursor calls Gmail <code>search_emails</code> and <code>read_email</code>.<br>3. It reads the relevant verification message and enters the code in the job website.<br>4. The browser continues with the application.</p><p class="subtle">This is the intended login path.
+The setup transcript proves authorization succeeded; it does not itself prove a later OTP was retrieved successfully.</p></article><article class="card"><h3>Permissions: exact current behavior</h3><p>The server requested <code>gmail.modify</code> and <code>gmail.settings.basic</code>.
+These are broader than the permissions needed just to read OTPs.</p><p>ApplyPilot's Cursor hook allows Gmail search/read.
+It denies email sending in preview mode and allows <code>send_email</code> in submission mode.
+Other Gmail writes are denied by the hook.
+This tool policy does not narrow the underlying Google OAuth grant.</p></article></div>
+<details><summary>How the app finds Gmail MCP</summary><p>Each browser worker receives an inline MCP configuration built by <code>apply/launcher.py</code>:</p><pre>{
+  "gmail": {
+    "command": "npx",
+    "args": ["-y", "@gongrzhe/server-gmail-autoauth-mcp"]
+  }
+}</pre><p>The server uses <code>~/.gmail-mcp/</code> by default, independent of the worker's working directory.
+The authentication command was pinned to version 1.1.11; the existing runtime configuration does not pin a version.</p><p>Your Cursor API key authorizes Cursor model calls.
+It does not authorize Gmail.
+The Gmail connector in this chat is also separate from the local Gmail MCP process.</p></details>
+<p class="subtle">References: <a href="https://github.com/GongRzhe/Gmail-MCP-Server#installation--authentication" target="_blank" rel="noreferrer">Gmail MCP setup</a> · <a href="https://developers.google.com/workspace/gmail/api/quickstart/python" target="_blank" rel="noreferrer">Google's OAuth and Gmail API setup</a>.</p>
+</section>
+<section id="commands">
+<div class="label">05 / Launch commands</div><h2>Choose preparation, preview or submission</h2>
+<p>Start in the project directory:</p><div class="command"><button class="copy" type="button">Copy</button><pre>cd /Users/akash/Desktop/projects/ApplyPilot</pre></div>
+<div class="grid"><article class="card"><h3>Prepare documents</h3><div class="command"><button class="copy" type="button">Copy</button><pre>.venv/bin/applypilot run score tailor cover pdf --validation strict</pre></div><p>Reuses saved scores and completed documents.
+Does not launch the application browser stage.</p></article><article class="card"><h3>Preview one</h3><div class="command"><button class="copy" type="button">Copy</button><pre>.venv/bin/applypilot apply --agent cursor --model composer-2.5 --limit 1</pre></div><p>Opens visible Chrome and fills one job without final submission.</p></article><article class="card"><h3>Submit up to ten</h3><div class="command"><button class="copy" type="button">Copy</button><pre>.venv/bin/applypilot apply --agent cursor --model composer-2.5 --submit --limit 10</pre></div><p>Processes up to ten selected jobs sequentially and submits each successful application.
+Failures also consume the processing limit.
+Omitting <code>--limit</code> still defaults to one job.</p></article><article class="card"><h3>Check setup and saved state</h3><div class="command"><button class="copy" type="button">Copy</button><pre>.venv/bin/applypilot doctor
+.venv/bin/applypilot status</pre></div><p>Check local requirements and database counts.
+These commands are not an end-to-end proof of OTP login or employer submission.</p></article></div>
+<details><summary>Retrying a blocked job</summary><p>To retry one prepared job, use its original listing URL:</p><pre>.venv/bin/applypilot apply --agent cursor --model composer-2.5 --url 'PASTE_JOB_URL_HERE'</pre><p>This command previews.
+Add <code>--submit</code> to enable submission.
+For a broader reset, <code>apply --reset-failed</code> resets failed records but does not launch a browser.
+Before resetting a submission failure, inspect its outcome so an uncertain submission is not repeated.</p></details>
+<p class="subtle">Ctrl+C once skips the current browser job; twice stops the run.
+Composer 2.5 stays in standard mode because the SDK selection explicitly sets <code>fast=false</code>.</p>
+</section>
+<section id="files">
+<div class="label">06 / Persistence and practical limits</div><h2>Where the work lives</h2>
+<table><thead><tr><th>Location</th><th>Contents</th></tr></thead><tbody>
+<tr><td><code>~/.applypilot/.env</code></td><td>Cursor key and provider/model configuration.
+No secrets are embedded in this guide.</td></tr>
+<tr><td><code>~/.applypilot/profile.json / resume.txt</code></td><td>Applicant facts and the master resume used in text stages and application prompts.</td></tr>
+<tr><td><code>~/.applypilot/searches.yaml</code></td><td>Queries, remote/location preferences and enabled discovery sources.
+Your configured discovery source is JobSpy, searching LinkedIn and Indeed.</td></tr>
+<tr><td><code>~/.applypilot/applypilot.db</code></td><td>Discovered jobs, descriptions, scores, artifact paths, attempts and application state.</td></tr>
+<tr><td><code>~/.applypilot/tailored_resumes/</code><br><code>~/.applypilot/cover_letters/</code></td><td>Generated text and PDFs.
+New filenames include a stable identifier derived from the job URL, preventing identical titles from overwriting one another.</td></tr>
+<tr><td><code>~/.applypilot/logs/</code></td><td>Per-browser-run folders with <code>agent.log</code>, <code>summary.json</code> and, on successful capture, <code>review.png</code>.</td></tr>
+<tr><td><code>~/.applypilot/chrome-workers/</code><br><code>~/.applypilot/apply-workers/</code></td><td>Chrome profiles and worker execution/upload folders.</td></tr>
+<tr><td><code>~/.gmail-mcp/</code></td><td>OAuth client JSON and authorized Gmail credentials.</td></tr>
+</tbody></table>
+<div class="notice"><strong>Ready does not mean guaranteed.</strong><p>“Ready to apply” means prepared and unsubmitted, with either a direct application URL or an original listing URL.
+The browser may still encounter an expired vacancy, unsupported SSO, CAPTCHA, account setup, unconfirmed applicant facts or a location restriction.</p></div>
+<p>We also fixed the misleading zero-ready count, the duplicate-title document overwrite, and cover PDFs that used the resume layout and lost their sign-off.
+The two affected document pairs were regenerated; all ten cover PDFs were rebuilt from saved text.</p>
+</section>
+<footer>Documentation of this local checkout and the setup performed in this chat.
+No live job, mailbox or application status is loaded by this page.
+The source of truth for later results is the local database and each browser run's logs.</footer>
+</main>
+<script>
+const stages={
+ discover:['Discover','Input: searches.yaml. Work: JobSpy searches job boards and stores deduplicated listings, titles, source, location, salary and available descriptions in SQLite. Your configuration enables JobSpy; other discovery backends exist but are disabled here.','AI: the configured JobSpy search itself does not call Cursor.'],
+ enrich:['Enrich','Input: listings needing details. Work: fetch fuller descriptions and application links, with extraction fallbacks. Existing complete descriptions can bypass this work. Output: full_description, application_url and enrichment status.','AI: an extraction fallback can use the shared text model; basic scraping does not require it.'],
+ score:['Score','Input: master resume, applicant preferences and each description. Cursor returns a fit score from 1 to 10, keywords and reasoning. Completed scores are saved per job. The usual tailoring threshold is 7.','AI: fresh Cursor text request with built-in tools disabled.'],
+ tailor:['Tailor','Input: eligible job, master resume and factual profile. Cursor returns structured resume content; code assembles the document and runs validation. Text, job trace and validation report are saved. Approved resumes get PDFs.','AI: generation and validation/judging can make model calls. Personal facts must come from the applicant data.'],
+ cover:['Cover letter','Input: eligible prepared job and applicant facts. Generate and validate a short job-specific letter, then save its text and PDF. New filenames use the same job identifier as the resume.','AI: letter generation and any validation retries.'],
+ pdf:['PDF','Input: generated text files. Local Playwright Chromium renders documents to PDF. Resumes use the resume layout; filenames ending in _CL use the letter layout. Tailor and cover also generate PDFs directly, so this stage may have no work.','AI: none for rendering.']
+};
+const stagePanel=document.getElementById('stage-detail');
+function showStage(key){const [title,body,ai]=stages[key];stagePanel.replaceChildren();for(const [tag,text] of [['h3',title],['p',body],['p',ai]]){const el=document.createElement(tag);el.textContent=text;if(text===ai)el.className='subtle';stagePanel.append(el)}document.querySelectorAll('[data-stage]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.stage===key)))}
+document.querySelectorAll('[data-stage]').forEach(el=>el.addEventListener('click',()=>showStage(el.dataset.stage)));showStage('discover');
+function showMode(mode){const panel=document.getElementById('mode-detail');const title=document.createElement('h3');title.textContent=mode==='preview'?'Fill → screenshot → RESULT:PREVIEWED':'Fill → submit → confirm → RESULT:APPLIED';const body=document.createElement('p');body.textContent=mode==='preview'?'The final application submit action is forbidden. A successful preview is recorded separately; applied_at and failure-attempt counts are unchanged. Gmail sending is denied.':'The final submit action is enabled. A successful terminal result records applied_at and increments the session applied count. Gmail sending is allowed for email-only applications; other Gmail writes remain denied by the Cursor hook.';panel.replaceChildren(title,body);document.querySelectorAll('[data-mode]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.mode===mode)))}
+document.querySelectorAll('[data-mode]').forEach(el=>el.addEventListener('click',()=>showMode(el.dataset.mode)));showMode('preview');
+document.querySelectorAll('.copy').forEach(button=>button.addEventListener('click',async()=>{const text=button.parentElement.querySelector('pre').textContent;try{await navigator.clipboard.writeText(text);button.textContent='Copied';setTimeout(()=>button.textContent='Copy',1500)}catch{const selection=window.getSelection();const range=document.createRange();range.selectNodeContents(button.parentElement.querySelector('pre'));selection.removeAllRanges();selection.addRange(range);button.textContent='Select & copy'}}));
+</script>
+</body>
+</html>

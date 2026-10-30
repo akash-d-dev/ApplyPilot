@@ -6,7 +6,6 @@ profile at runtime. No hardcoded personal information.
 """
 
 import logging
-import re
 import time
 from datetime import UTC, datetime
 
@@ -14,6 +13,7 @@ from applypilot.config import COVER_LETTER_DIR, RESUME_PATH, load_profile
 from applypilot.database import get_connection
 from applypilot.llm import get_client
 from applypilot.progress import BatchProgress
+from applypilot.scoring.artifacts import job_document_prefix
 from applypilot.scoring.validator import (
     BANNED_WORDS,
     LLM_LEAK_PHRASES,
@@ -237,10 +237,7 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
             letter = generate_cover_letter(resume_text, job, profile,
                                           validation_mode=validation_mode)
 
-            # Build safe filename prefix
-            safe_title = re.sub(r"[^\w\s-]", "", job["title"])[:50].strip().replace(" ", "_")
-            safe_site = re.sub(r"[^\w\s-]", "", job["site"])[:20].strip().replace(" ", "_")
-            prefix = f"{safe_site}_{safe_title}"
+            prefix = job_document_prefix(job)
 
             cl_path = COVER_LETTER_DIR / f"{prefix}_CL.txt"
             cl_path.write_text(letter, encoding="utf-8")

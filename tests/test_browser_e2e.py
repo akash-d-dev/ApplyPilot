@@ -18,6 +18,10 @@ def test_fill_then_explicit_submit_once(monkeypatch, jobs, application_site, tmp
     caplog.set_level(logging.INFO)
     url, submissions = application_site
     job = jobs(url)
+    conn = database.get_connection()
+    conn.execute('UPDATE jobs SET application_url=NULL WHERE url=?', (url,))
+    conn.commit()
+    assert database.get_stats()['ready_to_apply'] == 1
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
