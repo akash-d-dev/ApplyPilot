@@ -2,18 +2,24 @@
 Unified LLM client for ApplyPilot.
 
 Auto-detects provider from environment:
+  CURSOR_API_KEY  -> Cursor SDK (when no existing provider is configured)
   GEMINI_API_KEY  -> Google Gemini (default: gemini-2.0-flash)
   OPENAI_API_KEY  -> OpenAI (default: gpt-4o-mini)
   LLM_URL         -> Local llama.cpp / Ollama compatible endpoint
 
 LLM_MODEL env var overrides the model name for any provider.
+LLM_PROVIDER explicitly selects cursor, gemini, openai, or local.
 """
 
 import logging
 import os
+import threading
 import time
 
 import httpx
+
+from applypilot.cursor_client import CursorLLMClient
+from applypilot.providers import llm_provider
 
 log = logging.getLogger(__name__)
 
@@ -32,21 +38,22 @@ def _detect_provider() -> tuple[str, str, str]:
     local_url = os.environ.get("LLM_URL", "")
     model_override = os.environ.get("LLM_MODEL", "")
 
-    if gemini_key and not local_url:
+    provider = llm_provider()
+    if provider == "gemini":
         return (
             "https://generativelanguage.googleapis.com/v1beta/openai",
             model_override or "gemini-2.0-flash",
             gemini_key,
         )
 
-    if openai_key and not local_url:
+    if provider == "openai":
         return (
             "https://api.openai.com/v1",
             model_override or "gpt-4o-mini",
             openai_key,
         )
 
-    if local_url:
+    if provider == "local":
         return (
             local_url.rstrip("/"),
             model_override or "local-model",
@@ -207,8 +214,8 @@ class LLMClient:
 
                 return self._chat_compat(messages, temperature, max_tokens)
 
-            except _GeminiCompatForbidden as exc:
-                # Model not available on OpenAI-compat layer — switch to native.
+            except _GeminiCompatForbidden:
+                # Model not available on OpenAI-compat layer - switch to native.
                 log.warning(
                     "Gemini compat endpoint returned 403 for model '%s'. "
                     "Switching to native generateContent API. "
@@ -216,13 +223,13 @@ class LLMClient:
                     self.model,
                 )
                 self._use_native_gemini = True
-                # Retry immediately with native — don't count as a rate-limit wait
+                # Retry immediately with native - don't count as a rate-limit wait
                 try:
                     return self._chat_native_gemini(messages, temperature, max_tokens)
                 except httpx.HTTPStatusError as native_exc:
                     raise RuntimeError(
                         f"Both Gemini endpoints failed. Compat: 403 Forbidden. "
-                        f"Native: {native_exc.response.status_code} — "
+                        f"Native: {native_exc.response.status_code} - "
                         f"{native_exc.response.text[:200]}"
                     ) from native_exc
 
@@ -284,14 +291,19 @@ class _GeminiCompatForbidden(Exception):
 # Singleton
 # ---------------------------------------------------------------------------
 
-_instance: LLMClient | None = None
+_instance: LLMClient | CursorLLMClient | None = None
+_instance_lock = threading.Lock()
 
 
-def get_client() -> LLMClient:
+def get_client() -> LLMClient | CursorLLMClient:
     """Return (or create) the module-level LLMClient singleton."""
     global _instance
-    if _instance is None:
-        base_url, model, api_key = _detect_provider()
-        log.info("LLM provider: %s  model: %s", base_url, model)
-        _instance = LLMClient(base_url, model, api_key)
+    with _instance_lock:
+        if _instance is None:
+            if llm_provider() == "cursor":
+                _instance = CursorLLMClient()
+            else:
+                base_url, model, api_key = _detect_provider()
+                log.info("LLM provider: %s  model: %s", base_url, model)
+                _instance = LLMClient(base_url, model, api_key)
     return _instance

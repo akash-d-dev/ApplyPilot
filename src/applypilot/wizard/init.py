@@ -10,10 +10,10 @@ Interactive flow that creates ~/.applypilot/ with:
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from pathlib import Path
 
-import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Confirm, Prompt
@@ -29,6 +29,30 @@ from applypilot.config import (
 )
 
 console = Console()
+
+
+def setup_cursor() -> None:
+    """Collect a Cursor credential privately and preserve other environment settings."""
+    from dotenv import set_key
+
+    from applypilot.providers import CURSOR_DEFAULT_MODEL
+
+    key = Prompt.ask("Cursor API key", password=True).strip()
+    if not key or any(character.isspace() for character in key):
+        raise ValueError("Cursor API key must be non-empty and contain no whitespace.")
+    model = Prompt.ask("Cursor model", default=CURSOR_DEFAULT_MODEL).strip()
+    if not model:
+        raise ValueError("Cursor model cannot be empty.")
+    ENV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(ENV_PATH, os.O_WRONLY | os.O_CREAT, 0o600)
+    os.fchmod(descriptor, 0o600)
+    os.close(descriptor)
+    values = {"CURSOR_API_KEY": key, "CURSOR_MODEL": model, "LLM_MODEL": model,
+              "LLM_PROVIDER": "cursor", "APPLY_AGENT": "cursor"}
+    for name, value in values.items():
+        set_key(ENV_PATH, name, value)
+    ENV_PATH.chmod(0o600)
+    console.print(f"Cursor configuration saved to {ENV_PATH}", markup=False)
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +133,7 @@ def _setup_profile() -> dict:
     profile["work_authorization"] = {
         "legally_authorized_to_work": Confirm.ask("Are you legally authorized to work in your target country?"),
         "require_sponsorship": Confirm.ask("Will you now or in the future need sponsorship?"),
-        "work_permit_type": Prompt.ask("Work permit type (e.g. Citizen, PR, Open Work Permit — leave blank if N/A)", default=""),
+        "work_permit_type": Prompt.ask("Work permit type (e.g. Citizen, PR, Open Work Permit - leave blank if N/A)", default=""),
     }
 
     # -- Compensation --
@@ -149,7 +173,7 @@ def _setup_profile() -> dict:
 
     # -- Resume Facts (preserved truths for tailoring) --
     console.print("\n[bold cyan]Resume Facts[/bold cyan]")
-    console.print("[dim]These are preserved exactly during resume tailoring — the AI will never change them.[/dim]")
+    console.print("[dim]These are preserved exactly during resume tailoring - the AI will never change them.[/dim]")
     companies = Prompt.ask("Companies to always keep (comma-separated)", default="")
     projects = Prompt.ask("Projects to always keep (comma-separated)", default="")
     school = Prompt.ask("School name(s) to preserve", default="")
@@ -234,7 +258,7 @@ def _setup_searches() -> None:
 # ---------------------------------------------------------------------------
 
 def _setup_ai_features() -> None:
-    """Ask about AI scoring/tailoring — optional LLM configuration."""
+    """Ask about AI scoring/tailoring - optional LLM configuration."""
     console.print(Panel(
         "[bold]Step 4: AI Features (optional)[/bold]\n"
         "An LLM powers job scoring, resume tailoring, and cover letters.\n"
@@ -245,14 +269,23 @@ def _setup_ai_features() -> None:
         console.print("[dim]Discovery-only mode. You can configure AI later with [bold]applypilot init[/bold].[/dim]")
         return
 
-    console.print("Supported providers: [bold]Gemini[/bold] (recommended, free tier), OpenAI, local (Ollama/llama.cpp)")
+    console.print("Supported providers: Cursor, Gemini, OpenAI, local (Ollama/llama.cpp)")
     provider = Prompt.ask(
         "Provider",
-        choices=["gemini", "openai", "local"],
+        choices=["cursor", "gemini", "openai", "local"],
         default="gemini",
     )
 
     env_lines = ["# ApplyPilot configuration", ""]
+
+    if provider == "cursor":
+        from dotenv import dotenv_values
+        existing = dotenv_values(ENV_PATH)
+        if existing.get("CURSOR_API_KEY") and existing.get("LLM_PROVIDER") == "cursor":
+            console.print("Using saved Cursor configuration.")
+            return
+        setup_cursor()
+        return
 
     if provider == "gemini":
         api_key = Prompt.ask("Gemini API key (from aistudio.google.com)")
@@ -272,6 +305,7 @@ def _setup_ai_features() -> None:
 
     env_lines.append("")
     ENV_PATH.write_text("\n".join(env_lines), encoding="utf-8")
+    ENV_PATH.chmod(0o600)
     console.print(f"[green]AI configuration saved to {ENV_PATH}[/green]")
 
 
@@ -284,22 +318,25 @@ def _setup_auto_apply() -> None:
     console.print(Panel(
         "[bold]Step 5: Auto-Apply (optional)[/bold]\n"
         "ApplyPilot can autonomously fill and submit job applications\n"
-        "using Claude Code as the browser agent."
+        "using Cursor or Claude Code as the browser agent.\n"
+        "Cursor fills forms by default; --submit enables submission."
     ))
 
     if not Confirm.ask("Enable autonomous job applications?", default=True):
         console.print("[dim]You can apply manually using the tailored resumes ApplyPilot generates.[/dim]")
         return
 
-    # Check for Claude Code CLI
-    if shutil.which("claude"):
-        console.print("[green]Claude Code CLI detected.[/green]")
-    else:
-        console.print(
-            "[yellow]Claude Code CLI not found on PATH.[/yellow]\n"
-            "Install it from: [bold]https://claude.ai/code[/bold]\n"
-            "Auto-apply won't work until Claude Code is installed."
-        )
+    from applypilot.config import load_env
+    from applypilot.providers import agent_requirements, apply_agent
+    load_env()
+    try:
+        selected = apply_agent()
+        missing = agent_requirements(selected)
+        console.print(f"Browser agent: {selected}")
+        for requirement in missing:
+            console.print(requirement, markup=False)
+    except RuntimeError as exc:
+        console.print(str(exc), markup=False)
 
     # Optional: CapSolver for CAPTCHAs
     console.print("\n[dim]Some job sites use CAPTCHAs. CapSolver can handle them automatically.[/dim]")
@@ -360,8 +397,8 @@ def run_wizard() -> None:
     _setup_auto_apply()
     console.print()
 
-    # Done — show tier status
-    from applypilot.config import get_tier, TIER_LABELS, TIER_COMMANDS
+    # Done - show tier status
+    from applypilot.config import TIER_COMMANDS, TIER_LABELS, get_tier
 
     tier = get_tier()
 
@@ -370,22 +407,22 @@ def run_wizard() -> None:
         label = TIER_LABELS[t]
         cmds = ", ".join(f"[bold]{c}[/bold]" for c in TIER_COMMANDS[t])
         if t <= tier:
-            tier_lines.append(f"  [green]✓ Tier {t} — {label}[/green]  ({cmds})")
+            tier_lines.append(f"  [green]✓ Tier {t} - {label}[/green]  ({cmds})")
         elif t == tier + 1:
-            tier_lines.append(f"  [yellow]→ Tier {t} — {label}[/yellow]  ({cmds})")
+            tier_lines.append(f"  [yellow]→ Tier {t} - {label}[/yellow]  ({cmds})")
         else:
-            tier_lines.append(f"  [dim]✗ Tier {t} — {label}  ({cmds})[/dim]")
+            tier_lines.append(f"  [dim]✗ Tier {t} - {label}  ({cmds})[/dim]")
 
     unlock_hint = ""
     if tier == 1:
         unlock_hint = "\n[dim]To unlock Tier 2: configure an LLM API key (re-run [bold]applypilot init[/bold]).[/dim]"
     elif tier == 2:
-        unlock_hint = "\n[dim]To unlock Tier 3: install Claude Code CLI + Chrome.[/dim]"
+        unlock_hint = "\n[dim]To unlock Tier 3: configure Cursor or Claude Code, Chrome, and Node.js.[/dim]"
 
     console.print(
         Panel.fit(
             "[bold green]Setup complete![/bold green]\n\n"
-            f"[bold]Your tier: Tier {tier} — {TIER_LABELS[tier]}[/bold]\n\n"
+            f"[bold]Your tier: Tier {tier} - {TIER_LABELS[tier]}[/bold]\n\n"
             + "\n".join(tier_lines)
             + unlock_hint,
             border_style="green",

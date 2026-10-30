@@ -30,6 +30,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "ruff>=0.1"]
+cursor = ["cursor-sdk~=1.2.0"]
 
 [project.scripts]
 applypilot = "applypilot.cli:app"

@@ -13,18 +13,15 @@ import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 
 from applypilot.config import RESUME_PATH, TAILORED_DIR, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
 from applypilot.scoring.validator import (
     BANNED_WORDS,
-    FABRICATION_WATCHLIST,
     sanitize_text,
     validate_json_fields,
-    validate_tailored_resume,
 )
 
 log = logging.getLogger(__name__)
@@ -53,12 +50,10 @@ def _build_tailor_prompt(profile: dict) -> str:
 
     # Preserved entities
     companies = resume_facts.get("preserved_companies", [])
-    projects = resume_facts.get("preserved_projects", [])
     school = resume_facts.get("preserved_school", "")
     real_metrics = resume_facts.get("real_metrics", [])
 
     companies_str = ", ".join(companies) if companies else "N/A"
-    projects_str = ", ".join(projects) if projects else "N/A"
     metrics_str = ", ".join(real_metrics) if real_metrics else "N/A"
 
     # Include ALL banned words from the validator so the LLM knows exactly
@@ -437,10 +432,8 @@ def tailor_resume(
 
         if not judge["passed"]:
             avoid_notes.append(f"Judge rejected: {judge['issues']}")
-            if attempt < max_retries:
-                # In normal mode, only retry on judge failure if there are retries left
-                if validation_mode != "lenient":
-                    continue
+            if attempt < max_retries and validation_mode != "lenient":
+                continue
             # Accept best attempt on last retry (all modes) or if lenient
             report["status"] = "approved_with_judge_warning"
             return tailored, report
@@ -484,8 +477,7 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
     results: list[dict] = []
     stats: dict[str, int] = {"approved": 0, "failed_validation": 0, "failed_judge": 0, "error": 0}
 
-    for job in jobs:
-        completed += 1
+    for completed, job in enumerate(jobs, start=1):
         try:
             tailored, report = tailor_resume(resume_text, job, profile,
                                              validation_mode=validation_mode)
@@ -535,6 +527,7 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
                 "attempts": report["attempts"],
             }
         except Exception as e:
+            log.debug("tailor: operation failed", exc_info=True)
             result = {
                 "url": job["url"], "title": job["title"], "site": job["site"],
                 "status": "error", "attempts": 0, "path": None, "pdf_path": None,
@@ -556,7 +549,7 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
         )
 
     # Persist to DB: increment attempt counter for ALL, save path only for approved
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     _success_statuses = {"approved", "approved_with_judge_warning"}
     for r in results:
         if r["status"] in _success_statuses:

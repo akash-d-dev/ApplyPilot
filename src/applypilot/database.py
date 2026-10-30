@@ -7,7 +7,7 @@ without migration ordering issues.
 
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from applypilot.config import DB_PATH
@@ -312,6 +312,10 @@ def get_stats(conn: sqlite3.Connection | None = None) -> dict:
         "SELECT COUNT(*) FROM jobs WHERE applied_at IS NOT NULL"
     ).fetchone()[0]
 
+    stats["previewed"] = conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE apply_status = 'previewed'"
+    ).fetchone()[0]
+
     stats["apply_errors"] = conn.execute(
         "SELECT COUNT(*) FROM jobs WHERE apply_error IS NOT NULL"
     ).fetchone()[0]
@@ -339,7 +343,7 @@ def store_jobs(conn: sqlite3.Connection, jobs: list[dict],
     Returns:
         Tuple of (new_count, duplicate_count).
     """
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     new = 0
     existing = 0
 

@@ -44,7 +44,7 @@ def _kill_process_tree(pid: int) -> None:
                 ["taskkill", "/F", "/T", "/PID", str(pid)],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                timeout=10,
+                timeout=10, check=False,
             )
         else:
             # Unix: kill entire process group
@@ -70,7 +70,7 @@ def _kill_on_port(port: int) -> None:
         if platform.system() == "Windows":
             result = subprocess.run(
                 ["netstat", "-ano", "-p", "TCP"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=10, check=False,
             )
             for line in result.stdout.splitlines():
                 if f":{port}" in line and "LISTENING" in line:
@@ -81,7 +81,7 @@ def _kill_on_port(port: int) -> None:
             # macOS / Linux
             result = subprocess.run(
                 ["lsof", "-ti", f":{port}"],
-                capture_output=True, text=True, timeout=10,
+                capture_output=True, text=True, timeout=10, check=False,
             )
             for pid_str in result.stdout.strip().splitlines():
                 pid_str = pid_str.strip()
@@ -139,7 +139,7 @@ def setup_worker_profile(worker_id: int) -> Path:
         "SingletonLock", "SingletonSocket", "SingletonCookie",
     }
 
-    for item in source.iterdir():
+    for item in source.iterdir() if source.exists() else []:
         if item.name in skip:
             continue
         dst = profile_dir / item.name
@@ -236,10 +236,9 @@ def launch_chrome(worker_id: int, port: int | None = None,
         cmd.append("--headless=new")
 
     # On Unix, start in a new process group so we can kill the whole tree
-    kwargs: dict = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    kwargs: dict = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
     if platform.system() != "Windows":
-        import os
-        kwargs["preexec_fn"] = os.setsid
+        kwargs["start_new_session"] = True
 
     proc = subprocess.Popen(cmd, **kwargs)
     with _chrome_lock:
@@ -280,8 +279,6 @@ def kill_all_chrome() -> None:
             _kill_process_tree(proc.pid)
         _kill_on_port(BASE_CDP_PORT + wid)
 
-    # Sweep base port in case of zombies
-    _kill_on_port(BASE_CDP_PORT)
 
 
 def reset_worker_dir(worker_id: int) -> Path:
@@ -316,6 +313,3 @@ def cleanup_on_exit() -> None:
         if proc.poll() is None:
             _kill_process_tree(proc.pid)
         _kill_on_port(BASE_CDP_PORT + wid)
-
-    # Sweep base port for any orphan
-    _kill_on_port(BASE_CDP_PORT)

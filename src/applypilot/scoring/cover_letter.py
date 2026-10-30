@@ -5,14 +5,13 @@ postings. All personal data (name, skills, achievements) comes from the user's
 profile at runtime. No hardcoded personal information.
 """
 
-import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from applypilot.config import COVER_LETTER_DIR, RESUME_PATH, load_profile
-from applypilot.database import get_connection, get_jobs_by_stage
+from applypilot.database import get_connection
 from applypilot.llm import get_client
 from applypilot.scoring.validator import (
     BANNED_WORDS,
@@ -231,8 +230,7 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
     results: list[dict] = []
     error_count = 0
 
-    for job in jobs:
-        completed += 1
+    for completed, job in enumerate(jobs, start=1):
         try:
             letter = generate_cover_letter(resume_text, job, profile,
                                           validation_mode=validation_mode)
@@ -269,6 +267,7 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
                 completed, len(jobs), rate * 60, result["title"][:40],
             )
         except Exception as e:
+            log.debug("cover_letter: operation failed", exc_info=True)
             result = {
                 "url": job["url"], "title": job["title"], "site": job["site"],
                 "path": None, "pdf_path": None, "error": str(e),
@@ -278,7 +277,7 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
             log.error("%d/%d [ERROR] %s -- %s", completed, len(jobs), job["title"][:40], e)
 
     # Persist to DB: increment attempt counter for ALL, save path only for successes
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     saved = 0
     for r in results:
         if r.get("path"):

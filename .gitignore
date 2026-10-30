@@ -19,6 +19,9 @@ logs/
 .mcp*.json
 
 # Python
+.venv/
+.pytest_cache/
+.ruff_cache/
 __pycache__/
 *.py[cod]
 *$py.class

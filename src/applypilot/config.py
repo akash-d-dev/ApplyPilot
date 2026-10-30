@@ -197,64 +197,49 @@ TIER_COMMANDS: dict[int, list[str]] = {
 }
 
 
-def get_tier() -> int:
-    """Detect the current tier based on available dependencies.
+def setup_requirements(required: int, agent: str | None = None) -> list[str]:
+    """Describe missing requirements for the selected providers."""
+    import importlib.util
 
-    Tier 1 (Discovery):            Python + pip
-    Tier 2 (AI Scoring & Tailoring): + LLM API key
-    Tier 3 (Full Auto-Apply):       + Claude Code CLI + Chrome
-    """
+    from applypilot.providers import agent_requirements, apply_agent, llm_provider
+
     load_env()
-
-    has_llm = any(os.environ.get(k) for k in ("GEMINI_API_KEY", "OPENAI_API_KEY", "LLM_URL"))
-    if not has_llm:
-        return 1
-
-    has_claude = shutil.which("claude") is not None
+    missing = []
     try:
-        get_chrome_path()
-        has_chrome = True
-    except FileNotFoundError:
-        has_chrome = False
-
-    if has_claude and has_chrome:
-        return 3
-
-    return 2
-
-
-def check_tier(required: int, feature: str) -> None:
-    """Raise SystemExit with a clear message if the current tier is too low.
-
-    Args:
-        required: Minimum tier needed (1, 2, or 3).
-        feature: Human-readable description of the feature being gated.
-    """
-    current = get_tier()
-    if current >= required:
-        return
-
-    from rich.console import Console
-    _console = Console(stderr=True)
-
-    missing: list[str] = []
-    if required >= 2 and not any(os.environ.get(k) for k in ("GEMINI_API_KEY", "OPENAI_API_KEY", "LLM_URL")):
-        missing.append("LLM API key — run [bold]applypilot init[/bold] or set GEMINI_API_KEY")
+        provider = llm_provider()
+        if provider == "cursor" and importlib.util.find_spec("cursor_sdk") is None:
+            missing.append("Cursor SDK - install applypilot[cursor] in your venv")
+    except RuntimeError as exc:
+        missing.append(str(exc))
     if required >= 3:
-        if not shutil.which("claude"):
-            missing.append("Claude Code CLI — install from [bold]https://claude.ai/code[/bold]")
+        try:
+            missing.extend(agent_requirements(apply_agent(agent)))
+        except RuntimeError as exc:
+            missing.append(str(exc))
         try:
             get_chrome_path()
         except FileNotFoundError:
-            missing.append("Chrome/Chromium — install or set CHROME_PATH")
+            missing.append("Chrome/Chromium - install or set CHROME_PATH")
+    return list(dict.fromkeys(missing))
 
-    _console.print(
-        f"\n[red]'{feature}' requires {TIER_LABELS.get(required, f'Tier {required}')} (Tier {required}).[/red]\n"
-        f"Current tier: {TIER_LABELS.get(current, f'Tier {current}')} (Tier {current})."
-    )
-    if missing:
-        _console.print("\n[yellow]Missing:[/yellow]")
-        for m in missing:
-            _console.print(f"  - {m}")
-    _console.print()
+
+def get_tier(agent: str | None = None) -> int:
+    """Detect readiness using the selected AI provider and browser agent."""
+    if setup_requirements(2):
+        return 1
+    return 2 if setup_requirements(3, agent) else 3
+
+
+def check_tier(required: int, feature: str, agent: str | None = None) -> None:
+    """Stop early with actionable requirements for the requested feature."""
+    if required <= 1:
+        return
+    missing = setup_requirements(required, agent)
+    if not missing:
+        return
+    from rich.console import Console
+    console = Console(stderr=True)
+    console.print(f"[red]{feature} requires {TIER_LABELS[required]}.[/red]")
+    for requirement in missing:
+        console.print(f"  - {requirement}", markup=False)
     raise SystemExit(1)

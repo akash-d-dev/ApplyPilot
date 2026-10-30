@@ -5,13 +5,12 @@ job description. All personal data is loaded at runtime from the user's
 profile and resume file.
 """
 
-import json
 import logging
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from applypilot.config import RESUME_PATH, load_profile
+from applypilot.config import RESUME_PATH
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
 
@@ -97,6 +96,7 @@ def score_job(resume_text: str, job: dict) -> dict:
         response = client.chat(messages, max_tokens=512, temperature=0.2)
         return _parse_score_response(response)
     except Exception as e:
+        log.debug("scorer: operation failed", exc_info=True)
         log.error("LLM error scoring job '%s': %s", job.get("title", "?"), e)
         return {"score": 0, "keywords": "", "reasoning": f"LLM error: {e}"}
 
@@ -137,10 +137,9 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
     errors = 0
     results: list[dict] = []
 
-    for job in jobs:
+    for completed, job in enumerate(jobs, start=1):
         result = score_job(resume_text, job)
         result["url"] = job["url"]
-        completed += 1
 
         if result["score"] == 0:
             errors += 1
@@ -153,7 +152,7 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
         )
 
     # Write scores to DB
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     for r in results:
         conn.execute(
             "UPDATE jobs SET fit_score = ?, score_reasoning = ?, scored_at = ? WHERE url = ?",

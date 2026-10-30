@@ -7,7 +7,7 @@ in a terminal dashboard using the Rich library.
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -33,8 +33,10 @@ class WorkerState:
     last_action: str = ""
     jobs_applied: int = 0
     jobs_failed: int = 0
+    jobs_previewed: int = 0
     jobs_done: int = 0
     total_cost: float = 0.0
+    cost_available: bool = True
     log_file: Path | None = None
 
 
@@ -98,6 +100,7 @@ _STATUS_STYLES: dict[str, str] = {
     "idle": "dim",
     "applying": "yellow",
     "applied": "bold green",
+    "previewed": "bold cyan",
     "failed": "red",
     "expired": "dim red",
     "captcha": "magenta",
@@ -120,6 +123,7 @@ def render_dashboard() -> Table:
     table.add_column("Acts", width=5, justify="right")
     table.add_column("Last Action", min_width=20, max_width=35, no_wrap=True)
     table.add_column("OK", width=4, justify="right", style="green")
+    table.add_column("View", width=4, justify="right", style="cyan")
     table.add_column("Fail", width=4, justify="right", style="red")
     table.add_column("Cost", width=8, justify="right")
 
@@ -128,6 +132,7 @@ def render_dashboard() -> Table:
 
     total_applied = 0
     total_failed = 0
+    total_previewed = 0
     total_cost = 0.0
 
     for s in states:
@@ -148,18 +153,21 @@ def render_dashboard() -> Table:
             str(s.actions) if s.actions else "",
             s.last_action[:35] if s.last_action else "",
             str(s.jobs_applied),
+            str(s.jobs_previewed),
             str(s.jobs_failed),
-            f"${s.total_cost:.3f}" if s.total_cost else "",
+            f"${s.total_cost:.3f}" if s.cost_available else "N/A",
         )
         total_applied += s.jobs_applied
         total_failed += s.jobs_failed
+        total_previewed += s.jobs_previewed
         total_cost += s.total_cost
 
     # Totals row
     table.add_section()
     table.add_row(
         "", "", "", "", "", "TOTAL",
-        str(total_applied), str(total_failed), f"${total_cost:.3f}",
+        str(total_applied), str(total_previewed), str(total_failed),
+        f"${total_cost:.3f}" if all(s.cost_available for s in states) else "N/A",
         style="bold",
     )
 
@@ -199,5 +207,6 @@ def get_totals() -> dict[str, int | float]:
     with _lock:
         applied = sum(s.jobs_applied for s in _worker_states.values())
         failed = sum(s.jobs_failed for s in _worker_states.values())
+        previewed = sum(s.jobs_previewed for s in _worker_states.values())
         cost = sum(s.total_cost for s in _worker_states.values())
-    return {"applied": applied, "failed": failed, "cost": cost}
+    return {"applied": applied, "previewed": previewed, "failed": failed, "cost": cost}

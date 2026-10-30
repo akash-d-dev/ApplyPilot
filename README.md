@@ -44,6 +44,65 @@ applypilot apply --dry-run  # fill forms without submitting
 
 ## Two Paths
 
+### Cursor setup from this checkout
+
+Cursor can power every AI stage and browser autofill through its official Python SDK.
+Use Python 3.11+, Chrome, and Node.js with `npx` for Playwright MCP.
+The Python SDK bundles its own bridge, so no TypeScript helper or Cursor CLI is required.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[cursor,dev]' python-jobspy
+python -m playwright install chromium
+applypilot configure-cursor
+applypilot init
+applypilot doctor
+```
+
+`configure-cursor` asks for your API key using hidden input and saves it in `~/.applypilot/.env` with owner-only permissions.
+It preserves other settings and selects Cursor for both text stages and browser automation.
+When running `init`, select Cursor again if configuring AI settings.
+Provide your actual resume, profile, and job preferences through the wizard.
+
+```bash
+applypilot run
+applypilot apply --agent cursor             # fill for review without submitting
+applypilot apply --agent cursor --submit    # explicitly submit eligible applications
+applypilot apply --agent cursor --model composer-2.5
+```
+
+Cursor fills forms by default, including with multiple workers.
+`--submit` enables submission; it cannot be combined with `--dry-run`.
+Claude retains its existing submission default and supports `--dry-run`.
+Previewed applications stay separate from submitted applications and do not consume failure attempts.
+Later `--submit` runs include previewed jobs without automatically retrying failed submissions.
+Use `--url` with one worker to explicitly retry a particular unsubmitted job.
+
+Each completed browser run saves `agent.log`, `summary.json`, and a review screenshot under `~/.applypilot/logs/` before closing the worker browser.
+These files contain applicant data, so keep them private.
+Cursor token usage appears in the summary when available; billed cost is shown as unavailable rather than inferred from tokens.
+Gmail requires its existing MCP authentication setup for verification emails or email-only applications.
+Preview mode blocks email sending; other Gmail changes remain blocked.
+
+| Setting | Purpose |
+| --- | --- |
+| `LLM_PROVIDER=cursor` | Explicitly select Cursor for text stages |
+| `APPLY_AGENT=cursor` | Select Cursor for browser automation |
+| `CURSOR_API_KEY` | Cursor user or service-account API key |
+| `CURSOR_MODEL=composer-2.5` | Default Cursor model |
+| `LLM_MODEL` | Optional model override for text stages |
+
+Without explicit settings, an otherwise unconfigured installation detects Cursor from `CURSOR_API_KEY`.
+Existing local, Gemini, and OpenAI provider selection takes precedence when those credentials are also configured.
+Available models are checked against your key before jobs run.
+Cursor uses isolated, tool-free agents for text requests.
+Its SDK does not expose equivalent temperature or maximum-output-token controls, so those existing client arguments are compatibility hints only.
+Existing stage validators still check generated content.
+
+Run automated checks with `python -m pytest tests -q` and `ruff check src tests`.
+Local browser tests use synthetic applicant data and never contact employers.
+
 ### Full Pipeline (recommended)
 **Requires:** Python 3.11+, Node.js (for npx), Gemini API key (free), Claude Code CLI, Chrome
 

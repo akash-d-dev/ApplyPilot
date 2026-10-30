@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Local application fixture</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f4f6fa; color: #172033; font: 16px system-ui, sans-serif; }
+  main { max-width: 640px; margin: 40px auto; padding: 32px; background: white; border-radius: 12px; }
+  h1 { margin: 8px 0; }
+  p { color: #4c566a; line-height: 1.5; }
+  label { display: block; margin: 20px 0 8px; font-weight: 600; }
+  input { display: block; width: 100%; margin-top: 8px; padding: 12px; border: 1px solid #aab3c4; border-radius: 6px; font: inherit; }
+  button { margin-top: 24px; padding: 12px 20px; background: #2447cc; color: white; border: 0; border-radius: 6px; font: inherit; }
+  #confirmation { color: #14613c; font-weight: 600; }
+</style>
+<main>
+  <small>LOCAL TEST FIXTURE</small>
+  <h1>Test Engineer</h1>
+  <p>Remote position. Synthetic test data only. This form never contacts an employer.</p>
+  <form>
+    <label>Full name<input name="name" autocomplete="name" required></label>
+    <label>Email<input name="email" type="email" autocomplete="email" required></label>
+    <label>Resume PDF<input name="resume" type="file" accept=".pdf" required></label>
+    <button type="submit">Submit application</button>
+  </form>
+  <p id="confirmation" role="status"></p>
+</main>
+<script>
+  document.querySelector('form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = document.querySelector('button');
+    button.disabled = true;
+    await fetch('/submit', { method: 'POST', body: new FormData(event.target) });
+    document.querySelector('#confirmation').textContent = 'Application received';
+  });
+</script>
+</html>

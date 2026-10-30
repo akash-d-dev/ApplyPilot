@@ -122,7 +122,7 @@ def parse_entries(text: str) -> list[dict]:
         stripped = line.strip()
         if not stripped:
             continue
-        if stripped.startswith("- ") or stripped.startswith("\u2022 "):
+        if stripped.startswith(("- ", "\u2022 ")):
             if current:
                 current["bullets"].append(stripped[2:].strip())
         elif current is None or (
@@ -434,6 +434,7 @@ def batch_convert(limit: int = 50) -> int:
             convert_to_pdf(f)
             converted += 1
         except Exception as e:
+            log.debug("pdf: operation failed", exc_info=True)
             log.error("Failed to convert %s: %s", f.name, e)
 
     log.info("Done: %d/%d PDFs generated in %s", converted, len(to_convert), TAILORED_DIR)

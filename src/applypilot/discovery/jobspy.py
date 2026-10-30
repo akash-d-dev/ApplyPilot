@@ -10,12 +10,12 @@ search configuration YAML (searches.yaml) rather than being hardcoded.
 import logging
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from jobspy import scrape_jobs
 
 from applypilot import config
-from applypilot.database import get_connection, init_db, store_jobs
+from applypilot.database import get_connection, init_db
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ def _location_ok(location: str | None, accept: list[str], reject: list[str]) -> 
 
 def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str) -> tuple[int, int]:
     """Store JobSpy DataFrame results into the DB. Returns (new, existing)."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     new = 0
     existing = 0
 
@@ -129,7 +129,6 @@ def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str) -> tup
             continue
 
         title = str(row.get("title", "")) if str(row.get("title", "")) != "nan" else None
-        company = str(row.get("company", "")) if str(row.get("company", "")) != "nan" else None
         location_str = str(row.get("location", "")) if str(row.get("location", "")) != "nan" else None
 
         # Build salary string from min/max
@@ -231,6 +230,7 @@ def _run_one_search(
             df = _scrape_with_retry(kwargs, max_retries=max_retries)
             all_dfs.append(df)
         except Exception as e:
+            log.debug("jobspy: operation failed", exc_info=True)
             log.error("[%s] (non-gd): %s", label, e)
 
     # Run Glassdoor separately with simplified location
@@ -252,14 +252,16 @@ def _run_one_search(
             gd_df = _scrape_with_retry(gd_kwargs, max_retries=max_retries)
             all_dfs.append(gd_df)
         except Exception as e:
+            log.debug("jobspy: operation failed", exc_info=True)
             log.error("[%s] (glassdoor): %s", label, e)
 
     if not all_dfs:
         log.error("[%s]: all sites failed", label)
         return {"new": 0, "existing": 0, "errors": 1, "filtered": 0, "total": 0, "label": label}
 
-    import pandas as pd
     import warnings
+
+    import pandas as pd
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         df = pd.concat(all_dfs, ignore_index=True) if len(all_dfs) > 1 else all_dfs[0]
@@ -330,6 +332,7 @@ def search_jobs(
     try:
         df = scrape_jobs(**kwargs)
     except Exception as e:
+        log.debug("jobspy: operation failed", exc_info=True)
         log.error("JobSpy search failed: %s", e)
         return {"error": str(e), "total": 0, "new": 0, "existing": 0}
 
@@ -407,13 +410,12 @@ def _full_crawl(
     total_errors = 0
     completed = 0
 
-    for s in searches:
+    for completed, s in enumerate(searches, start=1):
         result = _run_one_search(
             s, sites, results_per_site, hours_old,
             proxy_config, defaults, max_retries,
             accept_locs, reject_locs, glassdoor_map,
         )
-        completed += 1
         total_new += result["new"]
         total_existing += result["existing"]
         total_errors += result["errors"]

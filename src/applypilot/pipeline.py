@@ -21,8 +21,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from applypilot.config import load_env, ensure_dirs
-from applypilot.database import init_db, get_connection, get_stats
+from applypilot.config import ensure_dirs, load_env
+from applypilot.database import get_connection, get_stats, init_db
 
 log = logging.getLogger(__name__)
 console = Console()
@@ -60,7 +60,7 @@ _UPSTREAM: dict[str, str | None] = {
 # ---------------------------------------------------------------------------
 
 def _run_discover(workers: int = 1) -> dict:
-    """Stage: Job discovery — JobSpy, Workday, and smart-extract scrapers."""
+    """Stage: Job discovery - JobSpy, Workday, and smart-extract scrapers."""
     stats: dict = {"jobspy": None, "workday": None, "smartextract": None}
 
     # JobSpy
@@ -70,6 +70,7 @@ def _run_discover(workers: int = 1) -> dict:
         run_discovery()
         stats["jobspy"] = "ok"
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("JobSpy crawl failed: %s", e)
         console.print(f"  [red]JobSpy error:[/red] {e}")
         stats["jobspy"] = f"error: {e}"
@@ -81,6 +82,7 @@ def _run_discover(workers: int = 1) -> dict:
         run_workday_discovery(workers=workers)
         stats["workday"] = "ok"
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Workday scraper failed: %s", e)
         console.print(f"  [red]Workday error:[/red] {e}")
         stats["workday"] = f"error: {e}"
@@ -92,6 +94,7 @@ def _run_discover(workers: int = 1) -> dict:
         run_smart_extract(workers=workers)
         stats["smartextract"] = "ok"
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Smart extract failed: %s", e)
         console.print(f"  [red]Smart extract error:[/red] {e}")
         stats["smartextract"] = f"error: {e}"
@@ -100,34 +103,37 @@ def _run_discover(workers: int = 1) -> dict:
 
 
 def _run_enrich(workers: int = 1) -> dict:
-    """Stage: Detail enrichment — scrape full descriptions and apply URLs."""
+    """Stage: Detail enrichment - scrape full descriptions and apply URLs."""
     try:
         from applypilot.enrichment.detail import run_enrichment
         run_enrichment(workers=workers)
         return {"status": "ok"}
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Enrichment failed: %s", e)
         return {"status": f"error: {e}"}
 
 
 def _run_score() -> dict:
-    """Stage: LLM scoring — assign fit scores 1-10."""
+    """Stage: LLM scoring - assign fit scores 1-10."""
     try:
         from applypilot.scoring.scorer import run_scoring
         run_scoring()
         return {"status": "ok"}
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Scoring failed: %s", e)
         return {"status": f"error: {e}"}
 
 
 def _run_tailor(min_score: int = 7, validation_mode: str = "normal") -> dict:
-    """Stage: Resume tailoring — generate tailored resumes for high-fit jobs."""
+    """Stage: Resume tailoring - generate tailored resumes for high-fit jobs."""
     try:
         from applypilot.scoring.tailor import run_tailoring
         run_tailoring(min_score=min_score, validation_mode=validation_mode)
         return {"status": "ok"}
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Tailoring failed: %s", e)
         return {"status": f"error: {e}"}
 
@@ -139,17 +145,19 @@ def _run_cover(min_score: int = 7, validation_mode: str = "normal") -> dict:
         run_cover_letters(min_score=min_score, validation_mode=validation_mode)
         return {"status": "ok"}
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("Cover letter generation failed: %s", e)
         return {"status": f"error: {e}"}
 
 
 def _run_pdf() -> dict:
-    """Stage: PDF conversion — convert tailored resumes and cover letters to PDF."""
+    """Stage: PDF conversion - convert tailored resumes and cover letters to PDF."""
     try:
         from applypilot.scoring.pdf import batch_convert
         batch_convert()
         return {"status": "ok"}
     except Exception as e:
+        log.debug("pipeline: operation failed", exc_info=True)
         log.error("PDF conversion failed: %s", e)
         return {"status": f"error: {e}"}
 
@@ -304,13 +312,14 @@ def _run_stage_streaming(
                 runner(**kwargs)
                 passes += 1
             except Exception as e:
+                log.debug("pipeline: operation failed", exc_info=True)
                 log.error("Stage '%s' error (pass %d): %s", stage, passes, e)
                 passes += 1
         else:
             # No work right now
             upstream_done = upstream is None or tracker.is_done(upstream)
             if upstream_done:
-                # No work and upstream is done — this stage is finished
+                # No work and upstream is done - this stage is finished
                 break
             # Upstream still running, wait and retry
             if stop_event.wait(timeout=_STREAM_POLL_INTERVAL):
@@ -333,7 +342,7 @@ def _run_sequential(ordered: list[str], min_score: int, workers: int = 1,
     for name in ordered:
         meta = STAGE_META[name]
         console.print(f"\n{'=' * 70}")
-        console.print(f"  [bold]STAGE: {name}[/bold] — {meta['desc']}")
+        console.print(f"  [bold]STAGE: {name}[/bold] - {meta['desc']}")
         console.print(f"  Started: {datetime.now().strftime('%H:%M:%S')}")
         console.print(f"{'=' * 70}")
 
@@ -371,7 +380,7 @@ def _run_sequential(ordered: list[str], min_score: int, workers: int = 1,
         if status not in ("ok", "partial"):
             errors[name] = status
 
-        console.print(f"\n  Stage '{name}' completed in {elapsed:.1f}s — {status}")
+        console.print(f"\n  Stage '{name}' completed in {elapsed:.1f}s - {status}")
 
     total_elapsed = time.time() - pipeline_start
     return {"stages": results, "errors": errors, "elapsed": total_elapsed}
@@ -384,7 +393,7 @@ def _run_streaming(ordered: list[str], min_score: int, workers: int = 1,
     stop_event = threading.Event()
     pipeline_start = time.time()
 
-    console.print(f"\n  [bold cyan]STREAMING MODE[/bold cyan] — stages run concurrently")
+    console.print("\n  [bold cyan]STREAMING MODE[/bold cyan] - stages run concurrently")
     console.print(f"  Poll interval: {_STREAM_POLL_INTERVAL}s\n")
 
     # Mark stages NOT in `ordered` as done so downstream doesn't wait for them
@@ -417,7 +426,7 @@ def _run_streaming(ordered: list[str], min_score: int, workers: int = 1,
                 f"  [green]Completed:[/green] {name} ({elapsed:.1f}s)"
             )
     except KeyboardInterrupt:
-        console.print("\n[yellow]Interrupted — stopping stages...[/yellow]")
+        console.print("\n[yellow]Interrupted - stopping stages...[/yellow]")
         stop_event.set()
         for t in threads.values():
             t.join(timeout=10)
@@ -488,11 +497,11 @@ def run_pipeline(
     console.print(f"  DB:        {pre_stats['total']} jobs, {pre_stats['pending_detail']} pending enrichment")
 
     if dry_run:
-        console.print(f"\n  [yellow]DRY RUN[/yellow] — would execute ({mode}):")
+        console.print(f"\n  [yellow]DRY RUN[/yellow] - would execute ({mode}):")
         for name in ordered:
             meta = STAGE_META[name]
             console.print(f"    {name:<12s}  {meta['desc']}")
-        console.print(f"\n  No changes made.")
+        console.print("\n  No changes made.")
         return {"stages": [], "errors": {}, "elapsed": 0.0}
 
     # Execute
@@ -527,7 +536,7 @@ def run_pipeline(
 
     # Final DB stats
     final = get_stats()
-    console.print(f"\n  [bold]DB Final State:[/bold]")
+    console.print("\n  [bold]DB Final State:[/bold]")
     console.print(f"    Total jobs:     {final['total']}")
     console.print(f"    With desc:      {final['with_description']}")
     console.print(f"    Scored:         {final['scored']}")

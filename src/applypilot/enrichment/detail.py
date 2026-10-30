@@ -16,15 +16,13 @@ import re
 import sqlite3
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
-from applypilot import config
-from applypilot.config import DB_PATH
-from applypilot.database import get_connection, init_db, ensure_columns
+from applypilot.database import init_db
 from applypilot.llm import get_client
 
 log = logging.getLogger(__name__)
@@ -59,7 +57,7 @@ def resolve_url(raw_url: str, site: str) -> str | None:
     if not raw_url:
         return None
 
-    if raw_url.startswith("http://") or raw_url.startswith("https://"):
+    if raw_url.startswith(("http://", "https://")):
         return raw_url
 
     if site == "WelcomeToTheJungle":
@@ -90,7 +88,7 @@ def resolve_all_urls(conn: sqlite3.Connection) -> dict:
 
     for row in rows:
         url, site = row[0], row[1]
-        if url.startswith("http://") or url.startswith("https://"):
+        if url.startswith(("http://", "https://")):
             already_absolute += 1
             continue
 
@@ -141,7 +139,7 @@ def resolve_wttj_urls(conn: sqlite3.Connection) -> int:
             try:
                 algolia_data["response"] = json.loads(response.text())
             except Exception:
-                pass
+                log.debug("detail: operation failed", exc_info=True)
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -217,7 +215,7 @@ def collect_detail_intelligence(page) -> dict:
             data = json.loads(el.inner_text())
             intel["json_ld"].append(data)
         except Exception:
-            pass
+            log.debug("detail: operation failed", exc_info=True)
 
     return intel
 
@@ -336,6 +334,7 @@ def extract_apply_url_deterministic(page) -> str | None:
                         return parent_href
                     return page.url
         except Exception:
+            log.debug("detail: operation failed", exc_info=True)
             continue
 
     try:
@@ -347,7 +346,7 @@ def extract_apply_url_deterministic(page) -> str | None:
                 if href and href != "#" and "javascript:" not in href:
                     return href
     except Exception:
-        pass
+        log.debug("detail: operation failed", exc_info=True)
 
     return None
 
@@ -362,6 +361,7 @@ def extract_description_deterministic(page) -> str | None:
                 if len(text) >= 100:
                     return clean_description(text)
         except Exception:
+            log.debug("detail: operation failed", exc_info=True)
             continue
 
     return None
@@ -404,6 +404,7 @@ def extract_main_content(page) -> str:
                     if len(html) < 50000:
                         return clean_content_html(html)
         except Exception:
+            log.debug("detail: operation failed", exc_info=True)
             continue
 
     try:
@@ -416,6 +417,7 @@ def extract_main_content(page) -> str:
         """)
         return clean_content_html(html[:50000])
     except Exception:
+        log.debug("detail: operation failed", exc_info=True)
         return ""
 
 
@@ -437,7 +439,7 @@ def clean_content_html(html: str) -> str:
                         new_attrs["class"] = " ".join(kept[:3])
                 else:
                     new_attrs[attr] = val
-            elif attr.startswith("data-") or attr.startswith("aria-"):
+            elif attr.startswith(("data-", "aria-")):
                 new_attrs[attr] = val
         tag.attrs = new_attrs
 
@@ -454,7 +456,7 @@ def extract_with_llm(page, url: str) -> dict:
     try:
         title = page.title()
     except Exception:
-        pass
+        log.debug("detail: operation failed", exc_info=True)
 
     prompt = DETAIL_EXTRACT_PROMPT.format(
         url=url,
@@ -479,6 +481,7 @@ def extract_with_llm(page, url: str) -> dict:
 
         return {"full_description": desc, "application_url": apply_url}
     except Exception as e:
+        log.debug("detail: operation failed", exc_info=True)
         log.error("LLM ERROR: %s", e)
         return {"full_description": None, "application_url": None}
 
@@ -549,8 +552,9 @@ def scrape_detail_page(page, url: str) -> dict:
         try:
             page.wait_for_load_state("networkidle", timeout=10000)
         except Exception:
-            pass
+            log.debug("detail: operation failed", exc_info=True)
     except Exception as e:
+        log.debug("detail: operation failed", exc_info=True)
         err_str = str(e)
         if "timeout" in err_str.lower():
             result["error"] = "timeout"
@@ -629,7 +633,7 @@ def scrape_site_batch(
     if own_conn:
         conn = init_db()
 
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
 
     try:
         with sync_playwright() as p:
@@ -838,6 +842,7 @@ def stream_detail(
                         log.info("%s: %d ok, %d partial, %d error",
                                  site, stats['ok'], stats['partial'], stats['error'])
                     except Exception as e:
+                        log.debug("detail: operation failed", exc_info=True)
                         log.error("%s: CRASHED: %s", site, e)
 
             upstream_finished = upstream_done is None or upstream_done.is_set()

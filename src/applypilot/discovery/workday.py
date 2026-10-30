@@ -14,7 +14,7 @@ import sqlite3
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 
 import yaml
@@ -208,6 +208,7 @@ def search_employer(
         try:
             data = workday_search(employer, search_text, limit=page_size, offset=offset)
         except Exception as e:
+            log.debug("workday: operation failed", exc_info=True)
             log.error("%s: API error at offset %d: %s", employer["name"], offset, e)
             break
 
@@ -221,9 +222,9 @@ def search_employer(
 
         for j in postings:
             loc = j.get("locationsText", "")
-            if location_filter and accept_locs is not None and reject_locs is not None:
-                if not _location_ok(loc, accept_locs, reject_locs):
-                    continue
+            if (location_filter and accept_locs is not None and reject_locs is not None
+                    and not _location_ok(loc, accept_locs, reject_locs)):
+                continue
 
             all_jobs.append({
                 "title": j.get("title", ""),
@@ -266,6 +267,7 @@ def _fetch_one_detail(employer: dict, job: dict) -> dict:
         job["remote_type"] = info.get("remoteType", "")
 
     except Exception as e:
+        log.debug("workday: operation failed", exc_info=True)
         job["full_description"] = ""
         job["apply_url"] = ""
         job["detail_error"] = str(e)
@@ -281,9 +283,8 @@ def fetch_details(employer: dict, jobs: list[dict]) -> list[dict]:
     errors = 0
     t0 = time.time()
 
-    for job in jobs:
+    for completed, job in enumerate(jobs, start=1):
         _fetch_one_detail(employer, job)
-        completed += 1
         if "detail_error" in job:
             errors += 1
 
@@ -302,7 +303,7 @@ def fetch_details(employer: dict, jobs: list[dict]) -> list[dict]:
 
 def store_results(conn: sqlite3.Connection, jobs: list[dict], employers: dict) -> tuple[int, int]:
     """Store corporate jobs in DB. Returns (new, existing)."""
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     new = 0
     existing = 0
 
@@ -359,6 +360,7 @@ def _process_one(
             reject_locs=reject_locs,
         )
     except Exception as e:
+        log.debug("workday: operation failed", exc_info=True)
         log.error("%s: ERROR searching '%s': %s", emp["name"], search_text, e)
         return {"employer": emp["name"], "query": search_text,
                 "found": 0, "new": 0, "existing": 0, "error": str(e)}
@@ -370,6 +372,7 @@ def _process_one(
     try:
         jobs = fetch_details(emp, jobs)
     except Exception as e:
+        log.debug("workday: operation failed", exc_info=True)
         log.error("%s: ERROR fetching details for '%s': %s", emp["name"], search_text, e)
 
     conn = get_connection()
@@ -427,9 +430,8 @@ def scrape_employers(
                 ): key
                 for key in valid_keys
             }
-            for future in as_completed(futures):
+            for completed, future in enumerate(as_completed(futures), start=1):
                 result = future.result()
-                completed += 1
                 total_new += result["new"]
                 total_existing += result["existing"]
                 total_found += result["found"]
@@ -443,12 +445,11 @@ def scrape_employers(
     else:
         # Sequential mode (default)
         completed = 0
-        for key in valid_keys:
+        for completed, key in enumerate(valid_keys, start=1):
             result = _process_one(
                 key, employers, search_text,
                 location_filter, accept_locs, reject_locs,
             )
-            completed += 1
             total_new += result["new"]
             total_existing += result["existing"]
             total_found += result["found"]

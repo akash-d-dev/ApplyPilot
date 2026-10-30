@@ -11,8 +11,8 @@ normal  -- banned words = warnings only; fabrication/structure = errors (default
 lenient -- banned words ignored; only fabrication and required structure checked
 """
 
-import re
 import logging
+import re
 
 log = logging.getLogger(__name__)
 
@@ -78,9 +78,7 @@ def _build_skills_set(profile: dict) -> set[str]:
     boundary = profile.get("skills_boundary", {})
     allowed: set[str] = set()
     for category in boundary.values():
-        if isinstance(category, list):
-            allowed.update(s.lower().strip() for s in category)
-        elif isinstance(category, set):
+        if isinstance(category, (list, set)):
             allowed.update(s.lower().strip() for s in category)
     return allowed
 
@@ -145,14 +143,12 @@ def validate_json_fields(data: dict, profile: dict, mode: str = "normal") -> dic
             if not has_company:
                 errors.append(f"Company '{company}' missing from experience")
         for entry in data["experience"]:
-            for b in entry.get("bullets", []):
-                all_text_parts.append(b)
+            all_text_parts.extend(entry.get("bullets", []))
 
     # Projects: collect bullets
     if isinstance(data["projects"], list):
         for entry in data["projects"]:
-            for b in entry.get("bullets", []):
-                all_text_parts.append(b)
+            all_text_parts.extend(entry.get("bullets", []))
 
     # Education: preserved school must be present (always enforced)
     preserved_school = resume_facts.get("preserved_school", "")
