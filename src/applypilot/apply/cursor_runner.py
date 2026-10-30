@@ -9,7 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from applypilot.apply.cursor_hook import install_hook
-from applypilot.cursor_client import cursor_session, validate_model
+from applypilot.cursor_client import cursor_model_selection, cursor_session, validate_model
 from applypilot.providers import redact
 
 
@@ -36,7 +36,7 @@ def main() -> int:
             validate_model(client, args.model)
             with client.agents.create(
                 AgentOptions(
-                    model=args.model,
+                    model=cursor_model_selection(args.model),
                     api_key=os.environ.get("CURSOR_API_KEY", ""),
                     tools=["mcp"],
                     local=LocalAgentOptions(cwd=workspace, setting_sources=["project"]),

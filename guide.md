@@ -67,6 +67,7 @@ applypilot configure-cursor
 
 The key prompt uses hidden input.
 The default model is `composer-2.5`.
+ApplyPilot explicitly sends `fast=false` for Composer 2.5, so it uses standard mode even if the account defaults to Fast.
 
 ## 3. Discover jobs and prepare applications
 
@@ -142,6 +143,35 @@ applypilot apply --agent cursor --submit --workers 2 --limit 2
 The first command previews; the second submits.
 Each worker uses its own browser and upload directory.
 Press Ctrl+C once to skip current jobs, or twice to stop the application run.
+
+## Reading progress logs
+
+Startup shows the selected model, whether submission is enabled, and saved totals from previous runs.
+Composer 2.5 appears as `standard (fast=false)`.
+Routine HTTP request lines are hidden; warnings and errors remain visible.
+
+During preparation, logs look like:
+
+```text
+Model: cursor | composer-2.5 | standard (fast=false)
+Mode: preparation only; no applications will be submitted
+Applications this run: applied=0 | previewed=0
+Scoring: processed=0/59 | scored=0 | failed=0 | START
+Scoring [1/59] START | Backend Developer | Remote, India | source=linkedin
+Scoring: processed=1/59 | scored=1 | failed=0 | OK | Backend Developer | Remote, India | source=linkedin | fit=8/10
+```
+
+Resume and cover-letter stages have separate `resumes_saved` and `letters_saved` counters.
+Each completed job is saved before its success counter is logged, so restarting keeps that completed work.
+Titles, locations, sources, and scores come from existing records; these progress messages make no extra AI requests.
+
+Browser submission runs start with `applied=0` for that run and increment it only after a successful submission is recorded.
+Previews increment `previewed` instead, and failures increment `failed`.
+These shared counts include all parallel browser workers.
+Saved totals are shown separately from the counters for the current run.
+
+The `start_applypilot.command` launcher prepares documents; its applied count remains zero because it does not submit applications.
+An already running process needs a restart to load logging changes.
 
 ## Files and settings
 

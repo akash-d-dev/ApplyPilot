@@ -63,6 +63,8 @@ def main(
     ),
 ) -> None:
     """ApplyPilot - AI-powered end-to-end job application pipeline."""
+    from applypilot.progress import configure_logging
+    configure_logging()
 
 
 @app.command()

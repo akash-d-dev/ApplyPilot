@@ -96,6 +96,7 @@ Preview mode blocks email sending; other Gmail changes remain blocked.
 Without explicit settings, an otherwise unconfigured installation detects Cursor from `CURSOR_API_KEY`.
 Existing local, Gemini, and OpenAI provider selection takes precedence when those credentials are also configured.
 Available models are checked against your key before jobs run.
+Composer 2.5 is explicitly pinned to `fast=false` rather than inheriting the account's default variant.
 Cursor uses isolated, tool-free agents for text requests.
 Its SDK does not expose equivalent temperature or maximum-output-token controls, so those existing client arguments are compatibility hints only.
 Existing stage validators still check generated content.

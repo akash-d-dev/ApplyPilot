@@ -35,7 +35,8 @@ from applypilot.apply.dashboard import (
     render_full,
     update_state,
 )
-from applypilot.database import get_connection
+from applypilot.database import get_connection, get_stats
+from applypilot.progress import ApplicationProgress, job_details, log_saved_counts, model_details
 
 logger = logging.getLogger(__name__)
 
@@ -435,7 +436,8 @@ def _is_permanent_failure(result: str) -> bool:
 def worker_loop(worker_id: int = 0, limit: int = 1,
                 target_url: str | None = None,
                 min_score: int = 7, headless: bool = False,
-                model: str = "haiku", dry_run: bool = False, agent: str = "claude") -> tuple[int, int]:
+                model: str = "haiku", dry_run: bool = False, agent: str = "claude",
+                progress: ApplicationProgress | None = None) -> tuple[int, int]:
     """Run jobs sequentially until limit is reached or queue is empty.
 
     Args:
@@ -457,6 +459,8 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
     jobs_done = 0
     empty_polls = 0
     port = BASE_CDP_PORT + worker_id
+    if progress is None:
+        progress = ApplicationProgress()
 
     while not _stop_event.is_set():
         if not continuous and jobs_done >= limit:
@@ -486,6 +490,7 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
 
         chrome_proc = None
         try:
+            logger.info('[W%d] %s START | %s', worker_id, 'PREVIEW' if dry_run else 'APPLY', job_details(job))
             add_event(f"[W{worker_id}] Launching Chrome...")
             chrome_proc = launch_chrome(worker_id, port=port, headless=headless)
 
@@ -496,6 +501,7 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
                 with _skipped_lock:
                     _skipped_urls.add(job["url"])
                 release_lock(job["url"], job.get("apply_status"))
+                progress.record('skipped', job, worker_id)
                 add_event(f"[W{worker_id}] Skipped: {job['title'][:30]}")
                 continue
             elif result == "previewed":
@@ -515,11 +521,13 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
                 failed += 1
                 update_state(worker_id, jobs_failed=failed,
                              jobs_done=applied + failed + previewed)
+            progress.record(result, job, worker_id)
 
         except KeyboardInterrupt:
             with _skipped_lock:
                 _skipped_urls.add(job["url"])
             release_lock(job["url"], job.get("apply_status"))
+            progress.record('skipped', job, worker_id)
             if _stop_event.is_set():
                 break
             add_event(f"[W{worker_id}] Job skipped (Ctrl+C)")
@@ -530,6 +538,7 @@ def worker_loop(worker_id: int = 0, limit: int = 1,
             release_lock(job["url"], job.get("apply_status"))
             failed += 1
             update_state(worker_id, jobs_failed=failed)
+            progress.record('failed:launcher_error', job, worker_id)
         finally:
             if chrome_proc:
                 cleanup_worker(worker_id, chrome_proc)
@@ -598,6 +607,10 @@ def main(limit: int = 1, target_url: str | None = None,
     worker_label = f"{workers} worker{'s' if workers > 1 else ''}"
     console.print(f"Launching apply pipeline ({mode_label}, {worker_label}, poll every {POLL_INTERVAL}s)...")
     console.print("[dim]Ctrl+C = skip current job(s) | Ctrl+C x2 = stop[/dim]")
+    logger.info('Model: %s', model_details(agent, model))
+    logger.info('Mode: %s', 'preview only; no applications will be submitted' if dry_run else 'submission enabled')
+    log_saved_counts(get_stats())
+    progress = ApplicationProgress()
 
     # Double Ctrl+C handler
     _ctrl_c_count = 0
@@ -644,6 +657,7 @@ def main(limit: int = 1, target_url: str | None = None,
                     model=model,
                     dry_run=dry_run,
                     agent=agent,
+                    progress=progress,
                 )
             else:
                 # Multi-worker — distribute limit across workers
@@ -668,6 +682,7 @@ def main(limit: int = 1, target_url: str | None = None,
                             model=model,
                             dry_run=dry_run,
                             agent=agent,
+                            progress=progress,
                         ): i
                         for i in range(workers)
                     }

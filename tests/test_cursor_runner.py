@@ -47,7 +47,7 @@ def test_sdk_events_are_normalized_and_resources_closed(monkeypatch, tmp_path, c
     monkeypatch.setattr(
         cursor_runner.sys,
         "argv",
-        ["cursor_runner", "--model", "test-model", "--mcp-config", str(mcp_path), "--dry-run"],
+        ["cursor_runner", "--model", "composer-2.5", "--mcp-config", str(mcp_path), "--dry-run"],
     )
     assert cursor_runner.main() == 0
     events = [json.loads(line) for line in capsys.readouterr().out.splitlines()]
@@ -58,5 +58,7 @@ def test_sdk_events_are_normalized_and_resources_closed(monkeypatch, tmp_path, c
     options = transport.agents.create.call_args.args[0]
     assert isinstance(options, AgentOptions)
     assert options.tools == ["mcp"]
+    assert options.model.id == 'composer-2.5'
+    assert [(parameter.id, parameter.value) for parameter in options.model.params] == [('fast', 'false')]
     assert options.local.setting_sources == ["project"]
     transport.agents.create.return_value.__exit__.assert_called_once()

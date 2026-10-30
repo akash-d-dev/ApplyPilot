@@ -10,9 +10,10 @@ import re
 import time
 from datetime import UTC, datetime
 
-from applypilot.config import RESUME_PATH
+from applypilot.config import RESUME_PATH, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
+from applypilot.progress import BatchProgress
 
 log = logging.getLogger(__name__)
 
@@ -86,8 +87,25 @@ def score_job(resume_text: str, job: dict) -> dict:
         f"DESCRIPTION:\n{(job.get('full_description') or '')[:6000]}"
     )
 
+    import json
+    try:
+        profile = load_profile()
+    except FileNotFoundError:
+        profile = {}
+    preferences = profile.get('job_preferences', {})
+    preference_prompt = ''
+    if preferences:
+        preference_prompt = (
+            '\nAPPLICANT PREFERENCES:\n' + json.dumps(preferences)
+            + '\nEXPERIENCE BREAKDOWN:\n' + json.dumps(profile.get('experience', {}))
+            + '\nRemote-only is a hard requirement. Onsite, hybrid, or geography restrictions excluding the applicant country '
+            'must score 1 regardless of technical fit. Unclear remote/geographic eligibility must score at most 4. '
+            'Full-time, part-time and contracts are eligible when permitted. No salary floor means do not penalize low pay. '
+            'Keep internship experience separate from full-time experience. Do not treat 6 months full-time as 3 years full-time. '
+            'Judge seniority requirements honestly; do not inflate qualifications.'
+        )
     messages = [
-        {"role": "system", "content": SCORE_PROMPT},
+        {"role": "system", "content": SCORE_PROMPT + preference_prompt},
         {"role": "user", "content": f"RESUME:\n{resume_text}\n\n---\n\nJOB POSTING:\n{job_text}"},
     ]
 
@@ -132,12 +150,13 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
         jobs = [dict(zip(columns, row)) for row in jobs]
 
     log.info("Scoring %d jobs sequentially...", len(jobs))
+    progress = BatchProgress('Scoring', 'scored', len(jobs))
     t0 = time.time()
-    completed = 0
     errors = 0
     results: list[dict] = []
 
-    for completed, job in enumerate(jobs, start=1):
+    for job in jobs:
+        progress.start_job(job)
         result = score_job(resume_text, job)
         result["url"] = job["url"]
 
@@ -145,20 +164,13 @@ def run_scoring(limit: int = 0, rescore: bool = False) -> dict:
             errors += 1
 
         results.append(result)
-
-        log.info(
-            "[%d/%d] score=%d  %s",
-            completed, len(jobs), result["score"], job.get("title", "?")[:60],
-        )
-
-    # Write scores to DB
-    now = datetime.now(UTC).isoformat()
-    for r in results:
+        now = datetime.now(UTC).isoformat()
         conn.execute(
             "UPDATE jobs SET fit_score = ?, score_reasoning = ?, scored_at = ? WHERE url = ?",
-            (r["score"], f"{r['keywords']}\n{r['reasoning']}", now, r["url"]),
+            (result['score'], f"{result['keywords']}\n{result['reasoning']}", now, result['url']),
         )
-    conn.commit()
+        conn.commit()
+        progress.record({**job, 'fit_score': result['score']}, success=result['score'] > 0)
 
     elapsed = time.time() - t0
     log.info("Done: %d scored in %.1fs (%.1f jobs/sec)", len(results), elapsed, len(results) / elapsed if elapsed > 0 else 0)

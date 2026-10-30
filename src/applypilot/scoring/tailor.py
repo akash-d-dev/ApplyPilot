@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from applypilot.config import RESUME_PATH, TAILORED_DIR, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
 from applypilot.llm import get_client
+from applypilot.progress import BatchProgress
 from applypilot.scoring.validator import (
     BANNED_WORDS,
     sanitize_text,
@@ -76,11 +77,14 @@ Take the base resume and job description. Return a tailored resume as a JSON obj
 ## SKILLS BOUNDARY (real skills only):
 {skills_block}
 
-You MAY add 2-3 closely related tools (Kubernetes if Docker, Terraform if AWS, Redis if PostgreSQL). No unrelated languages/frameworks.
+Only include tools demonstrated in the original resume or skills boundary.
+Do not add adjacent tools or infer experience with unlisted technologies.
+Keep internship roles explicitly labeled as internships and preserve their dates.
+Never turn internship experience into years of full-time employment.
 
 ## TAILORING RULES:
 
-TITLE: Match the target role. Keep seniority (Senior/Lead/Staff). Drop company suffixes and team names.
+TITLE: Match the target role without claiming seniority the original resume does not support.
 
 SUMMARY: Rewrite from scratch. Lead with the 1-2 skills that matter most for THIS role. Sound like someone who's done this job.
 
@@ -473,11 +477,12 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
     TAILORED_DIR.mkdir(parents=True, exist_ok=True)
     log.info("Tailoring resumes for %d jobs (score >= %d)...", len(jobs), min_score)
     t0 = time.time()
-    completed = 0
-    results: list[dict] = []
     stats: dict[str, int] = {"approved": 0, "failed_validation": 0, "failed_judge": 0, "error": 0}
 
-    for completed, job in enumerate(jobs, start=1):
+    progress = BatchProgress("Resumes", "resumes_saved", len(jobs))
+    success_statuses = {"approved", "approved_with_judge_warning"}
+    for job in jobs:
+        progress.start_job(job)
         try:
             tailored, report = tailor_resume(resume_text, job, profile,
                                              validation_mode=validation_mode)
@@ -532,51 +537,38 @@ def run_tailoring(min_score: int = 7, limit: int = 20,
                 "url": job["url"], "title": job["title"], "site": job["site"],
                 "status": "error", "attempts": 0, "path": None, "pdf_path": None,
             }
-            log.error("%d/%d [ERROR] %s -- %s", completed, len(jobs), job["title"][:40], e)
+            log.error("Resume generation failed for %s: %s", job["title"], e)
 
-        results.append(result)
-        stats[result.get("status", "error")] = stats.get(result.get("status", "error"), 0) + 1
-
-        elapsed = time.time() - t0
-        rate = completed / elapsed if elapsed > 0 else 0
-        log.info(
-            "%d/%d [%s] attempts=%s | %.1f jobs/min | %s",
-            completed, len(jobs),
-            result["status"].upper(),
-            result.get("attempts", "?"),
-            rate * 60,
-            result["title"][:40],
-        )
-
-    # Persist to DB: increment attempt counter for ALL, save path only for approved
-    now = datetime.now(UTC).isoformat()
-    _success_statuses = {"approved", "approved_with_judge_warning"}
-    for r in results:
-        if r["status"] in _success_statuses:
+        status = result.get("status", "error")
+        stats[status] = stats.get(status, 0) + 1
+        now = datetime.now(UTC).isoformat()
+        if status in success_statuses:
             conn.execute(
                 "UPDATE jobs SET tailored_resume_path=?, tailored_at=?, "
                 "tailor_attempts=COALESCE(tailor_attempts,0)+1 WHERE url=?",
-                (r["path"], now, r["url"]),
+                (result["path"], now, result["url"]),
             )
         else:
             conn.execute(
                 "UPDATE jobs SET tailor_attempts=COALESCE(tailor_attempts,0)+1 WHERE url=?",
-                (r["url"],),
+                (result["url"],),
             )
-    conn.commit()
+        conn.commit()
+        progress.record(job, success=status in success_statuses,
+                        detail=f"status={status} | pdf={'yes' if result.get('pdf_path') else 'no'}")
 
     elapsed = time.time() - t0
     log.info(
         "Tailoring done in %.1fs: %d approved, %d failed_validation, %d failed_judge, %d errors",
         elapsed,
-        stats.get("approved", 0),
+        progress.succeeded,
         stats.get("failed_validation", 0),
         stats.get("failed_judge", 0),
         stats.get("error", 0),
     )
 
     return {
-        "approved": stats.get("approved", 0),
+        "approved": progress.succeeded,
         "failed": stats.get("failed_validation", 0) + stats.get("failed_judge", 0),
         "errors": stats.get("error", 0),
         "elapsed": elapsed,

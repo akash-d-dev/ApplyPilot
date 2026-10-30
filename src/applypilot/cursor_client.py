@@ -1,6 +1,7 @@
 """Cursor's official Python SDK behind ApplyPilot's text client interface."""
 
 import json
+import logging
 import os
 import tempfile
 import threading
@@ -8,6 +9,16 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from applypilot.providers import CURSOR_DEFAULT_MODEL, redact
+
+log = logging.getLogger(__name__)
+
+
+def cursor_model_selection(model: str):
+    """Pin Composer's standard mode instead of inheriting the account's Fast default."""
+    if model != 'composer-2.5':
+        return model
+    from cursor_sdk import ModelParameterValue, ModelSelection
+    return ModelSelection(id=model, params=[ModelParameterValue(id='fast', value='false')])
 
 
 @contextmanager
@@ -56,6 +67,8 @@ class CursorLLMClient:
                 ):
                     validate_model(client, self.model)
                 self._validated = True
+                if self.model == 'composer-2.5':
+                    log.info('Cursor model: composer-2.5 (fast=false)')
 
     def chat(self, messages: list[dict], temperature: float = 0.0, max_tokens: int = 4096) -> str:
         """Return only the terminal assistant response, with no workspace tools."""
@@ -72,7 +85,7 @@ class CursorLLMClient:
             cursor_session(Path(directory)) as client,
             client.agents.create(
                 AgentOptions(
-                    model=self.model,
+                    model=cursor_model_selection(self.model),
                     api_key=os.environ.get("CURSOR_API_KEY", ""),
                     tools=[],
                     local=LocalAgentOptions(cwd=directory, setting_sources=[]),

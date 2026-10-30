@@ -1,5 +1,6 @@
 """Real local browser and database flow, with deterministic agent decisions."""
 
+import logging
 import socket
 import subprocess
 import sys
@@ -13,7 +14,8 @@ from applypilot import config, database
 from applypilot.apply import agents, dashboard, launcher
 
 
-def test_fill_then_explicit_submit_once(monkeypatch, jobs, application_site, tmp_path):
+def test_fill_then_explicit_submit_once(monkeypatch, jobs, application_site, tmp_path, caplog):
+    caplog.set_level(logging.INFO)
     url, submissions = application_site
     job = jobs(url)
     with socket.socket() as sock:
@@ -64,6 +66,7 @@ def test_fill_then_explicit_submit_once(monkeypatch, jobs, application_site, tmp
     assert launcher.worker_loop(dry_run=True, agent="cursor") == (0, 0)
     assert submissions == []
     assert database.get_stats()["previewed"] == 1
+    assert 'Applications this run: applied=0 | previewed=1' in caplog.text
     row = database.get_connection().execute("SELECT * FROM jobs").fetchone()
     assert row["applied_at"] is None
     assert row["apply_attempts"] == 0
@@ -84,5 +87,6 @@ def test_fill_then_explicit_submit_once(monkeypatch, jobs, application_site, tmp
     assert b"applicant@example.test" in submissions[0]
     assert b"application/pdf" in submissions[0]
     assert database.get_stats()["applied"] == 1
+    assert 'Applications this run: applied=1 | previewed=0' in caplog.text
     assert launcher.worker_loop(dry_run=False, agent="cursor") == (0, 0)
     assert len(submissions) == 1

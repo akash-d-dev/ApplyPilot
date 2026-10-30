@@ -59,7 +59,8 @@ def test_missing_sdk_actionable(monkeypatch, tmp_path):
     assert any("CURSOR_API_KEY" in item for item in agent_requirements("cursor"))
 
 
-def test_cursor_requests_use_fresh_tool_free_agents(monkeypatch):
+@pytest.mark.parametrize('model', ['test-model', 'composer-2.5'])
+def test_cursor_requests_use_fresh_tool_free_agents(monkeypatch, model):
     import applypilot.cursor_client as module
 
     clients = []
@@ -67,14 +68,14 @@ def test_cursor_requests_use_fresh_tool_free_agents(monkeypatch):
     @contextmanager
     def session(workspace):
         client = MagicMock()
-        client.models.list.return_value = [SimpleNamespace(id="test-model")]
+        client.models.list.return_value = [SimpleNamespace(id=model)]
         result = SimpleNamespace(status="finished", result='{"score": 9}', error_message=None)
         client.agents.create.return_value.__enter__.return_value.send.return_value.wait.return_value = result
         clients.append(client)
         yield client
 
     monkeypatch.setattr(module, "cursor_session", session)
-    client = CursorLLMClient("test-model")
+    client = CursorLLMClient(model)
     messages = [{"role": "system", "content": "JSON only"}, {"role": "user", "content": "Score"}]
     assert client.chat(messages, max_tokens=512, temperature=0.2) == '{"score": 9}'
     assert client.ask("Another independent request") == '{"score": 9}'
@@ -83,6 +84,9 @@ def test_cursor_requests_use_fresh_tool_free_agents(monkeypatch):
         options = transport.agents.create.call_args.args[0]
         assert options.tools == []
         assert options.local.setting_sources == []
+        if model == 'composer-2.5':
+            assert options.model.id == model
+            assert [(parameter.id, parameter.value) for parameter in options.model.params] == [('fast', 'false')]
         transport.agents.create.return_value.__exit__.assert_called_once()
     assert messages[0]["content"] == "JSON only"
 

@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 from applypilot.config import COVER_LETTER_DIR, RESUME_PATH, load_profile
 from applypilot.database import get_connection
 from applypilot.llm import get_client
+from applypilot.progress import BatchProgress
 from applypilot.scoring.validator import (
     BANNED_WORDS,
     LLM_LEAK_PHRASES,
@@ -226,11 +227,12 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
         len(jobs), min_score,
     )
     t0 = time.time()
-    completed = 0
-    results: list[dict] = []
     error_count = 0
+    saved = 0
+    progress = BatchProgress("Cover letters", "letters_saved", len(jobs))
 
-    for completed, job in enumerate(jobs, start=1):
+    for job in jobs:
+        progress.start_job(job)
         try:
             letter = generate_cover_letter(resume_text, job, profile,
                                           validation_mode=validation_mode)
@@ -258,41 +260,24 @@ def run_cover_letters(min_score: int = 7, limit: int = 20,
                 "title": job["title"],
                 "site": job["site"],
             }
-            results.append(result)
-
-            elapsed = time.time() - t0
-            rate = completed / elapsed if elapsed > 0 else 0
-            log.info(
-                "%d/%d [OK] | %.1f jobs/min | %s",
-                completed, len(jobs), rate * 60, result["title"][:40],
-            )
-        except Exception as e:
-            log.debug("cover_letter: operation failed", exc_info=True)
-            result = {
-                "url": job["url"], "title": job["title"], "site": job["site"],
-                "path": None, "pdf_path": None, "error": str(e),
-            }
-            error_count += 1
-            results.append(result)
-            log.error("%d/%d [ERROR] %s -- %s", completed, len(jobs), job["title"][:40], e)
-
-    # Persist to DB: increment attempt counter for ALL, save path only for successes
-    now = datetime.now(UTC).isoformat()
-    saved = 0
-    for r in results:
-        if r.get("path"):
             conn.execute(
                 "UPDATE jobs SET cover_letter_path=?, cover_letter_at=?, "
                 "cover_attempts=COALESCE(cover_attempts,0)+1 WHERE url=?",
-                (r["path"], now, r["url"]),
+                (result["path"], datetime.now(UTC).isoformat(), result["url"]),
             )
+            conn.commit()
             saved += 1
-        else:
+            progress.record(job, success=True, detail=f"pdf={'yes' if pdf_path else 'no'}")
+        except Exception as e:
+            log.debug("cover_letter: operation failed", exc_info=True)
+            error_count += 1
+            log.error("Cover letter generation failed for %s: %s", job["title"], e)
             conn.execute(
                 "UPDATE jobs SET cover_attempts=COALESCE(cover_attempts,0)+1 WHERE url=?",
-                (r["url"],),
+                (job["url"],),
             )
-    conn.commit()
+            conn.commit()
+            progress.record(job, success=False)
 
     elapsed = time.time() - t0
     log.info("Cover letters done in %.1fs: %d generated, %d errors", elapsed, saved, error_count)

@@ -61,44 +61,29 @@ _UPSTREAM: dict[str, str | None] = {
 
 def _run_discover(workers: int = 1) -> dict:
     """Stage: Job discovery - JobSpy, Workday, and smart-extract scrapers."""
-    stats: dict = {"jobspy": None, "workday": None, "smartextract": None}
+    from importlib import import_module
 
-    # JobSpy
-    console.print("  [cyan]JobSpy full crawl...[/cyan]")
-    try:
-        from applypilot.discovery.jobspy import run_discovery
-        run_discovery()
-        stats["jobspy"] = "ok"
-    except Exception as e:
-        log.debug("pipeline: operation failed", exc_info=True)
-        log.error("JobSpy crawl failed: %s", e)
-        console.print(f"  [red]JobSpy error:[/red] {e}")
-        stats["jobspy"] = f"error: {e}"
+    from applypilot.config import load_search_config
 
-    # Workday corporate scraper
-    console.print("  [cyan]Workday corporate scraper...[/cyan]")
-    try:
-        from applypilot.discovery.workday import run_workday_discovery
-        run_workday_discovery(workers=workers)
-        stats["workday"] = "ok"
-    except Exception as e:
-        log.debug("pipeline: operation failed", exc_info=True)
-        log.error("Workday scraper failed: %s", e)
-        console.print(f"  [red]Workday error:[/red] {e}")
-        stats["workday"] = f"error: {e}"
-
-    # Smart extract
-    console.print("  [cyan]Smart extract (AI-powered scraping)...[/cyan]")
-    try:
-        from applypilot.discovery.smartextract import run_smart_extract
-        run_smart_extract(workers=workers)
-        stats["smartextract"] = "ok"
-    except Exception as e:
-        log.debug("pipeline: operation failed", exc_info=True)
-        log.error("Smart extract failed: %s", e)
-        console.print(f"  [red]Smart extract error:[/red] {e}")
-        stats["smartextract"] = f"error: {e}"
-
+    runners = {
+        "jobspy": ("applypilot.discovery.jobspy", "run_discovery", {}),
+        "workday": ("applypilot.discovery.workday", "run_workday_discovery", {"workers": workers}),
+        "smartextract": ("applypilot.discovery.smartextract", "run_smart_extract", {"workers": workers}),
+    }
+    selected = load_search_config().get("discovery", {}).get("sources", list(runners))
+    unknown = set(selected) - runners.keys()
+    if unknown:
+        raise ValueError(f"Unknown discovery sources: {', '.join(sorted(unknown))}")
+    stats = {name: "disabled" for name in runners}
+    for name in selected:
+        module, function, kwargs = runners[name]
+        console.print(f"  [cyan]{name} discovery...[/cyan]")
+        try:
+            result = getattr(import_module(module), function)(**kwargs)
+            stats[name] = f"error: {result['errors']} source errors" if result.get('errors') else 'ok'
+        except Exception as exc:
+            log.exception("%s discovery failed", name)
+            stats[name] = f"error: {exc}"
     return stats
 
 
@@ -495,6 +480,17 @@ def run_pipeline(
     # Pre-run stats
     pre_stats = get_stats()
     console.print(f"  DB:        {pre_stats['total']} jobs, {pre_stats['pending_detail']} pending enrichment")
+    from applypilot.llm import get_client
+    from applypilot.progress import log_saved_counts, model_details
+    from applypilot.providers import llm_provider
+    try:
+        provider = llm_provider()
+        log.info('Model: %s', model_details(provider, get_client().model))
+    except RuntimeError:
+        log.info('Model: not configured (discovery-only setup)')
+    log.info('Mode: preparation only; no applications will be submitted')
+    log.info('Applications this run: applied=0 | previewed=0')
+    log_saved_counts(pre_stats)
 
     if dry_run:
         console.print(f"\n  [yellow]DRY RUN[/yellow] - would execute ({mode}):")

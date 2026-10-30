@@ -63,16 +63,24 @@ def _build_profile_summary(profile: dict) -> str:
 
     # Compensation
     currency = comp.get("salary_currency", "USD")
-    lines.append(f"Salary Expectation: ${comp['salary_expectation']} {currency}")
+    salary = 'Negotiable; no salary floor' if comp.get('negotiable') else f"{comp['salary_expectation']} {currency}"
+    lines.append(f"Salary Expectation: {salary}")
 
     # Experience
     if exp.get("years_of_experience_total"):
         lines.append(f"Years Experience: {exp['years_of_experience_total']}")
     if exp.get("education_level"):
         lines.append(f"Education: {exp['education_level']}")
+    if 'full_time_months' in exp:
+        lines.append(f"Experience breakdown: {exp['full_time_months']} months full-time; "
+                     f"{exp.get('internship_months', 0)} months internship. Never describe internships as full-time employment.")
 
     # Availability
     lines.append(f"Available: {avail.get('earliest_start_date', 'Immediately')}")
+    for key, label in [('notice_period', 'Notice period'), ('hours_per_week', 'Weekly hours'),
+                       ('working_hours', 'Working hours')]:
+        if avail.get(key):
+            lines.append(f"{label}: {avail[key]}")
 
     # Standard responses
     lines.extend([
@@ -100,6 +108,16 @@ def _build_location_check(profile: dict, search_config: dict) -> str:
     """
     personal = profile["personal"]
     location_cfg = search_config.get("location", {})
+    preferences = profile.get('job_preferences', {})
+    if preferences.get('remote_only') or location_cfg.get('remote_only'):
+        country = preferences.get('work_location_country') or personal.get('country', '')
+        return f"""== LOCATION CHECK (do this FIRST before any form) ==
+ONLY remote jobs that can be performed from {country} are eligible.
+Reject onsite, hybrid, required relocation, or remote jobs restricted to countries that exclude {country}.
+Worldwide remote roles and explicitly {country}-eligible remote roles are acceptable.
+If geography or remote eligibility is unclear, stop with RESULT:FAILED:location_unverified.
+Do not infer worldwide eligibility from the word remote alone.
+Ineligible location -> RESULT:FAILED:not_eligible_location."""
     accept_patterns = location_cfg.get("accept_patterns", [])
     primary_city = personal.get("city", location_cfg.get("primary", "your city"))
 
@@ -126,6 +144,12 @@ def _build_salary_section(profile: dict) -> str:
     Adapts floor, range, and currency from the profile's compensation section.
     """
     comp = profile["compensation"]
+    if comp.get('negotiable'):
+        return """== SALARY ==
+Compensation is negotiable with no salary floor.
+Do not reject a role because of its advertised pay, and do not invent expected compensation.
+Leave optional salary/rate fields blank or select Negotiable when offered.
+If an exact numeric salary or hourly rate is mandatory, stop with RESULT:FAILED:salary_confirmation_required."""
     currency = comp.get("salary_currency", "USD")
     floor = comp["salary_expectation"]
     range_min = comp.get("salary_range_min", floor)
@@ -178,7 +202,10 @@ Hard facts -> answer truthfully from the profile. No guessing. This includes:
   - Citizenship, clearance, licenses, certifications: answer from profile only
   - Criminal/background: answer from profile only
 
-Skills and tools -> be confident. This candidate is a {target_role} with {years} years experience. If the question asks "Do you have experience with [tool]?" and it's in the same domain (DevOps, backend, ML, cloud, automation), answer YES. Software engineers learn tools fast. Don't sell short.
+Skills and tools -> This candidate is a {target_role} with {years} years experience.
+Only claim tools and experience demonstrated in the profile or resume.
+Keep full-time employment and internships separate; never inflate years of full-time experience.
+Unknown mandatory factual answers -> RESULT:FAILED:applicant_confirmation_required.
 
 Open-ended questions ("Why do you want this role?", "Tell us about yourself", "What interests you?") -> Write 2-3 sentences. Be specific to THIS job. Reference something from the job description. Connect it to a real achievement from the resume. No generic fluff. No "I am passionate about..." -- sound like a real person.
 
@@ -539,6 +566,15 @@ def build_prompt(job: dict, tailored_resume: str,
         success_code = "RESULT:APPLIED -- submitted successfully"
         error_instruction = "If submission confirmation is unclear, stop. Do not submit again automatically."
 
+    employment_types = profile.get('job_preferences', {}).get('allowed_employment_types', ['full_time'])
+    employment_rule = (
+        f"Accepted employment types: {', '.join(employment_types)}. "
+        "Part-time or contract work is eligible when listed above. Follow the applicant's weekly availability. "
+        "Do not invent hourly rates, commit to an unknown start date, or sign a contract."
+        if any(kind in employment_types for kind in ('part_time', 'contract')) else
+        "Do not agree to hourly/contract rates or availability calendars. Apply for full-time salaried positions only."
+    )
+
     prompt = f"""You are a job application agent. {mission}
 
 == JOB ==
@@ -571,7 +607,7 @@ If something unexpected happens, read the page and adapt while following this mi
 - NEVER grant camera, microphone, screen sharing, or location permissions. If a site requests them -> RESULT:FAILED:unsafe_permissions
 - NEVER do video/audio verification, selfie capture, ID photo upload, or biometric anything -> RESULT:FAILED:unsafe_verification
 - NEVER set up a freelancing profile (Mercor, Toptal, Upwork, Fiverr, Turing, etc.). These are contractor marketplaces, not job applications -> RESULT:FAILED:not_a_job_application
-- NEVER agree to hourly/contract rates, availability calendars, or "set your rate" flows. You are applying for FULL-TIME salaried positions only.
+- {employment_rule}
 - NEVER install browser extensions, download executables, or run assessment software.
 - NEVER enter payment info, bank details, or SSN/SIN.
 - NEVER click "Allow" on any browser permission popup. Always deny/block.
