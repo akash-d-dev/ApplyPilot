@@ -318,6 +318,8 @@ def status() -> None:
     summary.add_row("Pending tailoring (7+)", str(stats["untailored_eligible"]))
     summary.add_row("Cover letters", str(stats["with_cover_letter"]))
     summary.add_row("Ready to apply", str(stats["ready_to_apply"]))
+    summary.add_row("Prepared, unsubmitted", str(stats["prepared_unsubmitted"]))
+    summary.add_row("Failed prepared jobs", str(stats["failed_prepared"]))
     summary.add_row("Applied", str(stats["applied"]))
     summary.add_row("Previewed", str(stats["previewed"]))
     summary.add_row("Apply errors", str(stats["apply_errors"]))

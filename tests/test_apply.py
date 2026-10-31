@@ -26,11 +26,12 @@ def test_preview_prompt_has_no_submission_steps(jobs):
 
 
 @pytest.mark.parametrize('dry_run', [True, False])
-def test_login_prefers_linkedin_then_google_then_email(jobs, dry_run):
+def test_login_prefers_google_then_email_without_linkedin_provider(jobs, dry_run):
     instructions = prompt.build_prompt(jobs(), 'Synthetic fixture', dry_run=dry_run)
     login = instructions.split('5. Login wall?', 1)[1].split('6. Upload resume.', 1)[0]
-    assert login.index('Reuse the existing website session') < login.index('Continue with LinkedIn')
-    assert login.index('Continue with LinkedIn') < login.index('Continue with Google')
+    assert login.index('Reuse the existing website session') < login.index('Continue with Google')
+    assert 'Do not choose Continue with LinkedIn' in login
+    assert 'FIRST provider choice: Continue with LinkedIn' not in login
     assert login.index('Continue with Google') < login.index('Email-code fallback')
     assert login.index('Email-code fallback') < login.index('Password fallback')
     assert 'accounts.google.com' in login
@@ -102,6 +103,36 @@ def test_preview_preserves_attempts_and_is_submit_eligible(jobs):
 
 def test_failed_submission_not_automatically_retried(jobs):
     jobs(status="failed")
+    assert launcher.acquire_job(dry_run=False) is None
+
+
+def test_failed_prepared_jobs_are_not_reported_ready(jobs):
+    for index in range(6):
+        jobs(f'http://fixture.test/{index}', status='failed')
+    stats = database.get_stats()
+    assert stats['ready_to_apply'] == 0
+    assert stats['prepared_unsubmitted'] == 6
+    assert stats['failed_prepared'] == 6
+    assert launcher.acquire_job(dry_run=False) is None
+
+
+def test_ready_count_matches_queue_filters(jobs, monkeypatch):
+    jobs('http://ready.test/')
+    jobs('http://previewed.test/', status='previewed')
+    jobs('http://failed.test/', status='failed')
+    jobs('http://in-progress.test/', status='in_progress')
+    jobs('http://exhausted.test/')
+    jobs('http://low-score.test/')
+    jobs('http://blocked.test/')
+    conn = database.get_connection()
+    conn.execute("UPDATE jobs SET apply_attempts=99 WHERE url='http://exhausted.test/'")
+    conn.execute("UPDATE jobs SET fit_score=4 WHERE url='http://low-score.test/'")
+    conn.commit()
+    monkeypatch.setattr('applypilot.config.load_blocked_sites', lambda: (set(), ['%blocked.test%']))
+    assert database.get_stats()['ready_to_apply'] == 2
+    assert len(database.get_jobs_by_stage(stage='pending_apply')) == 2
+    selected = [launcher.acquire_job(dry_run=False), launcher.acquire_job(dry_run=False)]
+    assert {row['url'] for row in selected} == {'http://ready.test/', 'http://previewed.test/'}
     assert launcher.acquire_job(dry_run=False) is None
 
 

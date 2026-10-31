@@ -88,6 +88,10 @@ applypilot dashboard
 
 The dashboard is an HTML view opened in your browser.
 There is no separate web server to start.
+Each job card shows its recorded application status, with a submission timestamp for applied jobs and a reason for failed jobs.
+The application-status dropdown filters these badges independently of score and text search.
+Open application and Open listing links navigate to the website; they do not indicate whether you applied.
+Rerun `applypilot dashboard` after application runs to regenerate this saved HTML snapshot.
 
 You can also run individual stages:
 
@@ -121,10 +125,11 @@ Later preview runs skip those jobs, while submission runs can select them.
 Previews do not increase failure-attempt counts.
 
 Login attempts first reuse the website session saved in that worker's Chrome profile.
-If needed, the agent first tries Continue with LinkedIn using the existing LinkedIn session, then Continue with Google using an already signed-in Google account matching your profile email.
+If needed, the agent tries Continue with Google using an already signed-in Google account matching your profile email.
+LinkedIn is not used as a login or signup provider for other websites.
 It then falls back to a fresh email code or sign-in link through Gmail MCP, followed by a configured website password.
 Google password entry, 2FA, account recovery, and new OAuth consent require manual login in the worker profile.
-LinkedIn identity/profile/email consent is allowed for the legitimate job portal; posting, messaging, contacts and unrelated permissions are forbidden.
+Posting, messaging, contacts and unrelated permissions are forbidden.
 If all login methods fail, `JOB_PORTAL_SIGNUP=1` and a configured `JOB_PORTAL_PASSWORD` allow account creation on the job portal or employer ATS for the vacancy.
 The account uses the email in your profile and the configured portal password, with fresh email verification through Gmail MCP.
 Existing-account notices return to login instead of creating duplicates or resetting passwords.
@@ -190,7 +195,9 @@ Previews increment `previewed` instead, and failures increment `failed`.
 These shared counts include all parallel browser workers.
 Saved totals are shown separately from the counters for the current run.
 
-`Ready to apply` counts prepared, unsubmitted jobs with a direct application URL or an original listing URL.
+`Ready to apply` counts jobs eligible for the default submission queue: a prepared resume, no recorded submission, score at least 7, a new or previewed state, remaining attempts, and no configured site/URL block.
+`Prepared, unsubmitted` also includes previous failures; `Failed prepared jobs` shows that subset separately.
+Failed submissions require an explicit retry decision and are not counted as ready.
 The browser agent can open the listing and follow its Apply link when no direct application URL was scraped.
 This count does not guarantee an open vacancy, an accessible form, or successful submission.
 New document filenames include a stable job identifier, so matching titles cannot overwrite each other's resumes or cover letters.

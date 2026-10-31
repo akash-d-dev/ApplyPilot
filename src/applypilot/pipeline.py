@@ -539,6 +539,8 @@ def run_pipeline(
     console.print(f"    Tailored:       {final['tailored']}")
     console.print(f"    Cover letters:  {final['with_cover_letter']}")
     console.print(f"    Ready to apply: {final['ready_to_apply']}")
+    console.print(f"    Prepared, unsubmitted: {final['prepared_unsubmitted']}")
+    console.print(f"    Failed prepared jobs:  {final['failed_prepared']}")
     console.print(f"    Applied:        {final['applied']}")
     console.print(f"{'=' * 70}\n")
 

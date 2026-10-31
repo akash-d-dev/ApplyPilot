@@ -127,12 +127,13 @@ The latter allows later MCP runs to access Gmail without a new manual sign-in wh
 We reset that failed record so it could be selected first again.
 This reset did not remove scores, resumes or cover letters.</p></li>
 </ol>
-<p class="notice">Login order: reuse the saved website session, then try Continue with LinkedIn using the existing applicant session, followed by Continue with Google using an already signed-in account matching the applicant email.
+<p class="notice">Login order: reuse the saved website session, then try Continue with Google using an already signed-in account matching the applicant email.
+LinkedIn is not used as a login or signup provider for another website.
 If that cannot finish, use a fresh website email code/link through Gmail MCP, followed by a configured website password.
 Google password entry, 2FA, recovery and new OAuth consent remain manual.
 If login methods fail, explicitly enabled job-portal signup uses the profile email and locally configured portal password, then Gmail MCP completes email verification.
 Existing accounts are not duplicated, and rejected passwords are not silently replaced.
-LinkedIn basic identity/profile/email consent is allowed for the job portal, but posting, messaging and contacts permissions are forbidden.
+Posting, messaging, contacts and unrelated permissions remain forbidden.
 No LinkedIn or Google account is created.
 Portal registration may happen in preview mode; application submission still requires --submit.</p>
 <div class="grid"><article class="card"><h3>At runtime</h3><p>1. The browser requests an email code from the job website.<br>2. Cursor calls Gmail <code>search_emails</code> and <code>read_email</code>.<br>3. It reads the relevant verification message and enters the code in the job website.<br>4. The browser continues with the application.</p><p class="subtle">This is the intended login path.
@@ -183,7 +184,9 @@ New filenames include a stable identifier derived from the job URL, preventing i
 <tr><td><code>~/.applypilot/chrome-workers/</code><br><code>~/.applypilot/apply-workers/</code></td><td>Chrome profiles and worker execution/upload folders.</td></tr>
 <tr><td><code>~/.gmail-mcp/</code></td><td>OAuth client JSON and authorized Gmail credentials.</td></tr>
 </tbody></table>
-<div class="notice"><strong>Ready does not mean guaranteed.</strong><p>“Ready to apply” means prepared and unsubmitted, with either a direct application URL or an original listing URL.
+<div class="notice"><strong>Ready does not mean guaranteed.</strong><p>“Ready to apply” counts eligibility for the default submission queue: prepared, unsubmitted, score at least 7, new or previewed status, remaining attempts, and no configured site/URL block.
+“Prepared, unsubmitted” includes previously failed jobs; those failures are shown separately and require an explicit retry decision.
+A direct application URL or original listing URL is still required.
 The browser may still encounter an expired vacancy, unsupported SSO, CAPTCHA, account setup, unconfirmed applicant facts or a location restriction.</p></div>
 <p>We also fixed the misleading zero-ready count, the duplicate-title document overwrite, and cover PDFs that used the resume layout and lost their sign-off.
 The two affected document pairs were regenerated; all ten cover PDFs were rebuilt from saved text.</p>

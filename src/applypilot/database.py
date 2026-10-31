@@ -10,6 +10,7 @@ import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
+from applypilot import config
 from applypilot.config import DB_PATH
 
 # Thread-local connection storage — each thread gets its own connection
@@ -20,6 +21,28 @@ PENDING_APPLY_WHERE = (
     "tailored_resume_path IS NOT NULL AND applied_at IS NULL "
     "AND (NULLIF(TRIM(application_url), '') IS NOT NULL OR NULLIF(TRIM(url), '') IS NOT NULL)"
 )
+
+
+def application_queue_filter(min_score: int = 7, dry_run: bool = False,
+                             skipped_urls: list[str] | None = None,
+                             blocked: tuple[set[str], list[str]] | None = None) -> tuple[str, list]:
+    """Share automatic queue eligibility between selection and reported counts."""
+    where = (
+        f"{PENDING_APPLY_WHERE} AND (apply_status IS NULL OR apply_status = ?) "
+        "AND COALESCE(apply_attempts, 0) < ? AND fit_score >= ?"
+    )
+    params: list = ['failed' if dry_run else 'previewed', config.DEFAULTS['max_apply_attempts'], min_score]
+    sites, patterns = blocked if blocked is not None else config.load_blocked_sites()
+    if sites:
+        where += f" AND site NOT IN ({','.join('?' for _ in sites)})"
+        params.extend(sorted(sites))
+    for pattern in patterns:
+        where += ' AND url NOT LIKE ?'
+        params.append(pattern)
+    if skipped_urls:
+        where += f" AND url NOT IN ({','.join('?' for _ in skipped_urls)})"
+        params.extend(skipped_urls)
+    return where, params
 
 
 def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
@@ -325,8 +348,15 @@ def get_stats(conn: sqlite3.Connection | None = None) -> dict:
         "SELECT COUNT(*) FROM jobs WHERE apply_error IS NOT NULL"
     ).fetchone()[0]
 
-    stats["ready_to_apply"] = conn.execute(
+    stats["prepared_unsubmitted"] = conn.execute(
         f"SELECT COUNT(*) FROM jobs WHERE {PENDING_APPLY_WHERE}"
+    ).fetchone()[0]
+    stats["failed_prepared"] = conn.execute(
+        f"SELECT COUNT(*) FROM jobs WHERE {PENDING_APPLY_WHERE} AND apply_status = 'failed'"
+    ).fetchone()[0]
+    queue_where, queue_params = application_queue_filter()
+    stats["ready_to_apply"] = conn.execute(
+        f"SELECT COUNT(*) FROM jobs WHERE {queue_where}", queue_params,
     ).fetchone()[0]
 
     return stats
@@ -404,7 +434,9 @@ def get_jobs_by_stage(conn: sqlite3.Connection | None = None,
     where = conditions.get(stage, "1=1")
     params: list = []
 
-    if "?" in where and min_score is not None:
+    if stage == 'pending_apply':
+        where, params = application_queue_filter(min_score if min_score is not None else 7)
+    elif "?" in where and min_score is not None:
         params.append(min_score)
     elif "?" in where:
         params.append(7)  # default min_score

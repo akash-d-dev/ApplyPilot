@@ -11,15 +11,32 @@ Generates a self-contained HTML dashboard with:
 from __future__ import annotations
 
 import webbrowser
+from datetime import datetime
 from html import escape
 from pathlib import Path
 
 from rich.console import Console
 
 from applypilot.config import APP_DIR
-from applypilot.database import get_connection
+from applypilot.database import get_connection, get_stats
 
 console = Console()
+
+
+def _application_status(job) -> tuple[str, str]:
+    """Use recorded outcomes, independently of whether a direct URL was scraped."""
+    if job['applied_at'] or job['apply_status'] == 'applied':
+        return 'applied', 'Applied'
+    status = job['apply_status']
+    labels = {
+        'previewed': 'Previewed', 'failed': 'Failed',
+        'in_progress': 'In progress', 'manual': 'Manual action',
+    }
+    if status in labels:
+        return status, labels[status]
+    if status:
+        return 'other', str(status).replace('_', ' ').capitalize()
+    return 'not_attempted', 'Not attempted'
 
 
 def generate_dashboard(output_path: str | None = None) -> str:
@@ -37,10 +54,11 @@ def generate_dashboard(output_path: str | None = None) -> str:
 
     # Stats
     total = conn.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
-    ready = conn.execute(
-        "SELECT COUNT(*) FROM jobs "
-        "WHERE full_description IS NOT NULL AND application_url IS NOT NULL"
-    ).fetchone()[0]
+    stats = get_stats(conn)
+    ready = stats['ready_to_apply']
+    applied = stats['applied']
+    previewed = stats['previewed']
+    failed = conn.execute("SELECT COUNT(*) FROM jobs WHERE apply_status='failed' AND applied_at IS NULL").fetchone()[0]
     scored = conn.execute(
         "SELECT COUNT(*) FROM jobs WHERE fit_score IS NOT NULL"
     ).fetchone()[0]
@@ -75,7 +93,7 @@ def generate_dashboard(output_path: str | None = None) -> str:
     jobs = conn.execute("""
         SELECT url, title, salary, description, location, site, strategy,
                full_description, application_url, detail_error,
-               fit_score, score_reasoning
+               fit_score, score_reasoning, apply_status, applied_at, apply_error
         FROM jobs
         WHERE fit_score >= 5
         ORDER BY fit_score DESC, site, title
@@ -140,7 +158,7 @@ def generate_dashboard(output_path: str | None = None) -> str:
             job_sections += f"""
             <h2 class="score-header" style="border-color:{score_color}">
               <span class="score-badge" style="background:{score_color}">{score}</span>
-              {score_label} ({count_at_score} jobs)
+              {score_label} <span class="score-group-count">({count_at_score} jobs)</span>
             </h2>
             <div class="job-grid">"""
             current_score = score
@@ -173,17 +191,36 @@ def generate_dashboard(output_path: str | None = None) -> str:
             meta_parts.append(f'<span class="meta-tag location">{location[:40]}</span>')
         meta_html = " ".join(meta_parts)
 
-        apply_html = ""
-        if apply_url:
-            apply_html = f'<a href="{apply_url}" class="apply-link" target="_blank">Apply</a>'
+        status, status_label = _application_status(j)
+        status_html = f'<span class="application-status status-{status}">{escape(status_label)}</span>'
+        if j['applied_at']:
+            try:
+                applied_date = datetime.fromisoformat(j['applied_at']).astimezone().strftime('%d %b %Y, %H:%M %Z')
+            except ValueError:
+                applied_date = j['applied_at']
+            status_html += (
+                f'<time class="status-time" datetime="{escape(j["applied_at"])}">'
+                f'{escape(applied_date)}</time>'
+            )
+        error_html = (
+            f'<p class="apply-error">Reason: {escape(j["apply_error"])}</p>'
+            if status == 'failed' and j['apply_error'] else ''
+        )
+        destination, link_label = (apply_url, 'Open application') if apply_url else (url, 'Open listing')
+        apply_html = (
+            f'<a href="{destination}" class="apply-link" target="_blank" rel="noopener noreferrer">'
+            f'{link_label}</a>' if destination else ''
+        )
 
         job_sections += f"""
-        <div class="job-card" data-score="{score}" data-site="{escape(j['site'] or '')}" data-location="{location.lower()}">
+        <div class="job-card" data-status="{status}" data-score="{score}" data-site="{escape(j['site'] or '')}" data-location="{location.lower()}">
           <div class="card-header">
             <span class="score-pill" style="background:{'#10b981' if score >= 7 else '#f59e0b'}">{score}</span>
             <a href="{url}" class="job-title" target="_blank">{title}</a>
           </div>
           <div class="meta-row">{meta_html}</div>
+          <div class="application-row">{status_html}</div>
+          {error_html}
           {f'<div class="keywords-row">{escape(keywords)}</div>' if keywords else ''}
           {f'<div class="reasoning-row">{escape(reasoning)}</div>' if reasoning else ''}
           <p class="desc-preview">{desc_preview}...</p>
@@ -208,7 +245,7 @@ def generate_dashboard(output_path: str | None = None) -> str:
   .subtitle {{ color: #94a3b8; margin-bottom: 2rem; }}
 
   /* Summary cards */
-  .summary {{ display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2.5rem; }}
+  .summary {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2.5rem; }}
   .stat-card {{ background: #1e293b; border-radius: 12px; padding: 1.25rem; }}
   .stat-num {{ font-size: 2rem; font-weight: 700; }}
   .stat-label {{ color: #94a3b8; font-size: 0.85rem; margin-top: 0.25rem; }}
@@ -224,7 +261,7 @@ def generate_dashboard(output_path: str | None = None) -> str:
   .filter-btn:hover {{ background: #475569; color: #e2e8f0; }}
   .filter-btn.active {{ background: #60a5fa; color: #0f172a; font-weight: 600; }}
   .search-input {{ background: #334155; border: 1px solid #475569; color: #e2e8f0; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.8rem; width: 200px; }}
-  .search-input::placeholder {{ color: #64748b; }}
+  .search-input::placeholder {{ color: #94a3b8; }}
 
   /* Score distribution */
   .score-section {{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2.5rem; }}
@@ -265,6 +302,15 @@ def generate_dashboard(output_path: str | None = None) -> str:
 
   .job-title {{ color: #e2e8f0; text-decoration: none; font-weight: 600; font-size: 0.95rem; }}
   .job-title:hover {{ color: #60a5fa; }}
+  .job-title {{ min-width: 0; overflow-wrap: anywhere; }}
+  .application-row {{ display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin: 0.65rem 0; }}
+  .application-status {{ font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.6rem; border-radius: 5px; background: #334155; color: #e2e8f0; }}
+  .status-applied {{ background: #064e3b; color: #a7f3d0; }}
+  .status-previewed {{ background: #1e3a5f; color: #bfdbfe; }}
+  .status-failed {{ background: #7f1d1d; color: #fecaca; }}
+  .status-in_progress, .status-manual {{ background: #713f12; color: #fef08a; }}
+  .status-time {{ color: #cbd5e1; font-size: 0.72rem; }}
+  .apply-error {{ font-size: 0.75rem; color: #fecaca; overflow-wrap: anywhere; margin-bottom: 0.6rem; }}
 
   .meta-row {{ display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.4rem; }}
   .meta-tag {{ font-size: 0.72rem; padding: 0.15rem 0.5rem; border-radius: 4px; background: #334155; color: #94a3b8; }}
@@ -274,7 +320,7 @@ def generate_dashboard(output_path: str | None = None) -> str:
   .keywords-row {{ font-size: 0.75rem; color: #10b981; margin-bottom: 0.3rem; line-height: 1.4; }}
   .reasoning-row {{ font-size: 0.75rem; color: #94a3b8; margin-bottom: 0.5rem; font-style: italic; line-height: 1.4; }}
 
-  .desc-preview {{ font-size: 0.8rem; color: #64748b; line-height: 1.5; margin-bottom: 0.75rem; max-height: 3.6em; overflow: hidden; }}
+  .desc-preview {{ font-size: 0.8rem; color: #94a3b8; line-height: 1.5; margin-bottom: 0.75rem; max-height: 3.6em; overflow: hidden; }}
 
   .card-footer {{ display: flex; justify-content: flex-end; }}
   .apply-link {{ font-size: 0.8rem; color: #60a5fa; text-decoration: none; padding: 0.3rem 0.8rem; border: 1px solid #60a5fa33; border-radius: 6px; font-weight: 500; }}
@@ -302,20 +348,32 @@ def generate_dashboard(output_path: str | None = None) -> str:
 
 <h1>ApplyPilot Dashboard</h1>
 <p class="subtitle">{total} jobs &middot; {scored} scored &middot; {high_fit} strong matches (7+)</p>
+<p class="subtitle">Application badges show recorded outcomes. Links open the website; they do not indicate application status.
+This is a saved snapshot. Rerun <code>applypilot dashboard</code> after applications to refresh the data.</p>
 
 <div class="summary">
   <div class="stat-card stat-total"><div class="stat-num">{total}</div><div class="stat-label">Total Jobs</div></div>
-  <div class="stat-card stat-ok"><div class="stat-num">{ready}</div><div class="stat-label">Ready (desc + URL)</div></div>
+  <div class="stat-card stat-ok"><div class="stat-num">{ready}</div><div class="stat-label">Ready to submit (7+)</div></div>
   <div class="stat-card stat-scored"><div class="stat-num">{scored}</div><div class="stat-label">Scored by LLM</div></div>
   <div class="stat-card stat-high"><div class="stat-num">{high_fit}</div><div class="stat-label">Strong Fit (7+)</div></div>
+  <div class="stat-card stat-ok"><div class="stat-num">{applied}</div><div class="stat-label">Applied</div></div>
+  <div class="stat-card stat-scored"><div class="stat-num">{previewed}</div><div class="stat-label">Previewed</div></div>
+  <div class="stat-card"><div class="stat-num">{failed}</div><div class="stat-label">Failed</div></div>
 </div>
 
 <div class="filters">
   <span class="filter-label">Score:</span>
-  <button class="filter-btn active" onclick="filterScore(0)">All 5+</button>
-  <button class="filter-btn" onclick="filterScore(7)">7+ Strong</button>
-  <button class="filter-btn" onclick="filterScore(8)">8+ Excellent</button>
-  <button class="filter-btn" onclick="filterScore(9)">9+ Perfect</button>
+  <button class="filter-btn active" onclick="filterScore(0, this)">All 5+</button>
+  <button class="filter-btn" onclick="filterScore(7, this)">7+ Strong</button>
+  <button class="filter-btn" onclick="filterScore(8, this)">8+ Excellent</button>
+  <button class="filter-btn" onclick="filterScore(9, this)">9+ Perfect</button>
+  <label class="filter-label" for="application-status">Application status:</label>
+  <select id="application-status" class="search-input" onchange="filterStatus(this.value)">
+    <option value="all">All statuses</option><option value="applied">Applied</option>
+    <option value="previewed">Previewed</option><option value="failed">Failed</option>
+    <option value="in_progress">In progress</option><option value="not_attempted">Not attempted</option>
+    <option value="manual">Manual action</option><option value="other">Other status</option>
+  </select>
   <span class="filter-label" style="margin-left:1rem">Search:</span>
   <input type="text" class="search-input" placeholder="Filter by title, site..." oninput="filterText(this.value)">
 </div>
@@ -338,16 +396,22 @@ def generate_dashboard(output_path: str | None = None) -> str:
 <script>
 let minScore = 0;
 let searchText = '';
+let applicationStatus = 'all';
 
-function filterScore(min) {{
+function filterScore(min, button) {{
   minScore = min;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  button.classList.add('active');
   applyFilters();
 }}
 
 function filterText(text) {{
   searchText = text.toLowerCase();
+  applyFilters();
+}}
+
+function filterStatus(status) {{
+  applicationStatus = status;
   applyFilters();
 }}
 
@@ -360,7 +424,8 @@ function applyFilters() {{
     const text = card.textContent.toLowerCase();
     const scoreMatch = score >= (minScore || 5);
     const textMatch = !searchText || text.includes(searchText);
-    if (scoreMatch && textMatch) {{
+    const statusMatch = applicationStatus === 'all' || card.dataset.status === applicationStatus;
+    if (scoreMatch && textMatch && statusMatch) {{
       card.classList.remove('hidden');
       shown++;
     }} else {{
@@ -374,6 +439,7 @@ function applyFilters() {{
     const grid = header.nextElementSibling;
     if (grid && grid.classList.contains('job-grid')) {{
       const visible = grid.querySelectorAll('.job-card:not(.hidden)').length;
+      header.querySelector('.score-group-count').textContent = `(${{visible}} ${{visible === 1 ? 'job' : 'jobs'}})`;
       header.style.display = visible ? '' : 'none';
       grid.style.display = visible ? '' : 'none';
     }}

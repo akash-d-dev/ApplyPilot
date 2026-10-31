@@ -36,7 +36,7 @@ from applypilot.apply.dashboard import (
     render_full,
     update_state,
 )
-from applypilot.database import get_connection, get_stats
+from applypilot.database import application_queue_filter, get_connection, get_stats
 from applypilot.progress import ApplicationProgress, job_details, log_saved_counts, model_details
 
 logger = logging.getLogger(__name__)
@@ -115,35 +115,17 @@ def acquire_job(target_url: str | None = None, min_score: int = 7,
                 LIMIT 1
             """, (target_url, target_url, like, like)).fetchone()
         else:
-            blocked_sites, blocked_patterns = _load_blocked()
-            # Build parameterized filters to avoid SQL injection
-            params: list = [min_score]
-            site_clause = ""
-            if blocked_sites:
-                placeholders = ",".join("?" * len(blocked_sites))
-                site_clause = f"AND site NOT IN ({placeholders})"
-                params.extend(blocked_sites)
-            url_clauses = ""
-            if blocked_patterns:
-                url_clauses = " ".join("AND url NOT LIKE ?" for _ in blocked_patterns)
-                params.extend(blocked_patterns)
-            if skipped:
-                placeholders = ",".join("?" * len(skipped))
-                url_clauses += f" AND url NOT IN ({placeholders})"
-                params.extend(skipped)
+            queue_where, params = application_queue_filter(
+                min_score=min_score, dry_run=dry_run, skipped_urls=skipped, blocked=_load_blocked(),
+            )
             row = conn.execute(f"""
                 SELECT url, title, site, application_url, tailored_resume_path,
                        fit_score, location, full_description, cover_letter_path, apply_status
                 FROM jobs
-                WHERE tailored_resume_path IS NOT NULL
-                  AND (apply_status IS NULL OR apply_status = ?)
-                  AND (apply_attempts IS NULL OR apply_attempts < ?)
-                  AND fit_score >= ?
-                  {site_clause}
-                  {url_clauses}
+                WHERE {queue_where}
                 ORDER BY fit_score DESC, url
                 LIMIT 1
-            """, ["failed" if dry_run else "previewed", config.DEFAULTS["max_apply_attempts"]] + params).fetchone()
+            """, params).fetchone()
 
         if not row:
             conn.rollback()
