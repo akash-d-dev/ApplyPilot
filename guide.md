@@ -101,7 +101,37 @@ applypilot run score tailor cover pdf
 ```
 
 After changing your search preferences, rerun discovery.
-Already processed jobs retain their stored pipeline state.
+Discovery first removes unapplied jobs that miss the current title and remote-location rules.
+Completed applications and historical records are preserved.
+
+### Broader remote discovery
+
+This checkout also supports public job feeds through the `remote_feeds` discovery source.
+Himalayas, Remotive, and Jobicy stay on their JSON APIs.
+RemoteOK, We Work Remotely, Hirist, and Wellfound use their public feeds or public job pages.
+Your local search configuration enables these alongside JobSpy's LinkedIn and Indeed searches, with 50 results requested per JobSpy search instead of 10.
+Workday is limited to the employers named under `workday.employers`.
+The remote feeds use local title, country and timezone checks before storing jobs and make no AI requests during discovery.
+Descriptions, known salaries, source links and application URLs are stored with the jobs.
+Unknown salaries remain eligible; internships are excluded by title or reported employment type.
+Title exclusions also apply to the automatic application queue, including older stored jobs.
+Completed applications and historical records are preserved.
+
+Remote API responses are cached for at least six hours to avoid repeated synchronization.
+Himalayas searches are bounded by `remote_feeds.queries` and `remote_feeds.max_pages` in `~/.applypilot/searches.yaml`.
+Other sources can return zero eligible jobs in the pages checked; none guarantees a salary level or a fit score.
+Remotive and Jobicy listing links retain the original source URL, and Himalayas application links are preserved unchanged.
+
+After discovery, prepare documents for the new matches without searching again:
+
+```bash
+applypilot run score tailor cover pdf --validation strict
+applypilot dashboard
+```
+
+Google web search could be a separate discovery integration for employer career pages.
+It is not enabled by this change; JobSpy currently reports its Google Jobs adapter as unavailable.
+See the [upstream issue](https://github.com/speedyapply/JobSpy/issues/284), [Himalayas API](https://himalayas.app/api), [Remotive API](https://github.com/remotive-com/remote-jobs-api), and [Jobicy API](https://github.com/Jobicy/remote-jobs-api).
 
 ## 4. Autofill one application for review
 

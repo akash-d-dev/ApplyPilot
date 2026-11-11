@@ -16,6 +16,7 @@ from jobspy import scrape_jobs
 
 from applypilot import config
 from applypilot.database import get_connection, init_db
+from applypilot.discovery.filters import discovery_eligible
 
 log = logging.getLogger(__name__)
 
@@ -86,42 +87,26 @@ def _load_location_config(search_cfg: dict) -> tuple[list[str], list[str]]:
     return accept, reject
 
 
-def _location_ok(location: str | None, accept: list[str], reject: list[str]) -> bool:
-    """Check if a job location passes the user's location filter.
-
-    Remote jobs are always accepted. Non-remote jobs must match an accept
-    pattern and not match a reject pattern.
-    """
-    if not location:
-        return True  # unknown location -- keep it, let scorer decide
-
-    loc = location.lower()
-
-    # Remote jobs always OK
-    if any(r in loc for r in ("remote", "anywhere", "work from home", "wfh", "distributed")):
-        return True
-
-    # Reject non-remote matches
-    for r in reject:
-        if r.lower() in loc:
-            return False
-
-    # Accept matches
-    for a in accept:
-        if a.lower() in loc:
-            return True
-
-    # No match -- reject unknown
-    return False
+def _listed_location(row) -> str | None:
+    """Attach the remote marker JobSpy reports separately from the place name."""
+    raw = row.get("location")
+    location = None if raw is None or str(raw) == "nan" else str(raw)
+    flag = row.get("is_remote", False)
+    remote = flag is True or str(flag).strip().lower() == "true"
+    if remote:
+        return f"{location} (Remote)" if location else "Remote"
+    return location
 
 
 # -- DB storage (JobSpy DataFrame -> SQLite) ---------------------------------
 
-def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str) -> tuple[int, int]:
+def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str,
+                         search_cfg: dict | None = None) -> tuple[int, int]:
     """Store JobSpy DataFrame results into the DB. Returns (new, existing)."""
     now = datetime.now(UTC).isoformat()
     new = 0
     existing = 0
+    search_cfg = search_cfg if search_cfg is not None else config.load_search_config()
 
     for _, row in df.iterrows():
         url = str(row.get("job_url", ""))
@@ -129,7 +114,10 @@ def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str) -> tup
             continue
 
         title = str(row.get("title", "")) if str(row.get("title", "")) != "nan" else None
-        location_str = str(row.get("location", "")) if str(row.get("location", "")) != "nan" else None
+        location_str = _listed_location(row)
+        employment = "" if str(row.get("job_type", "")) == "nan" else str(row.get("job_type", ""))
+        if not discovery_eligible(title, location_str, search_cfg, employment):
+            continue
 
         # Build salary string from min/max
         salary = None
@@ -147,12 +135,7 @@ def store_jobspy_results(conn: sqlite3.Connection, df, source_label: str) -> tup
 
         description = str(row.get("description", "")) if str(row.get("description", "")) != "nan" else None
         site_name = str(row.get("site", source_label))
-        is_remote = row.get("is_remote", False)
-
         site_label = f"{site_name}"
-        if is_remote:
-            location_str = f"{location_str} (Remote)" if location_str else "Remote"
-
         strategy = "jobspy"
 
         # If JobSpy gave us a full description, promote it directly
@@ -194,6 +177,7 @@ def _run_one_search(
     accept_locs: list[str],
     reject_locs: list[str],
     glassdoor_map: dict,
+    search_cfg: dict | None = None,
 ) -> dict:
     """Run a single search query and store results in DB."""
     s = search
@@ -270,20 +254,27 @@ def _run_one_search(
         log.info("[%s] 0 results", label)
         return {"new": 0, "existing": 0, "errors": 0, "filtered": 0, "total": 0, "label": label}
 
-    # Filter by location before storing
+    # Filter by title, employment, and location before storing
     before = len(df)
-    df = df[df.apply(lambda row: _location_ok(
-        str(row.get("location", "")) if str(row.get("location", "")) != "nan" else None,
-        accept_locs, reject_locs,
-    ), axis=1)]
+    search_cfg = search_cfg if search_cfg is not None else config.load_search_config()
+    filter_cfg = dict(search_cfg)
+    filter_cfg.setdefault("location_accept", accept_locs)
+    filter_cfg.setdefault("location_reject_non_remote", reject_locs)
+
+    def _keep(row) -> bool:
+        title = None if str(row.get("title", "")) == "nan" else str(row.get("title", ""))
+        employment = "" if str(row.get("job_type", "")) == "nan" else str(row.get("job_type", ""))
+        return discovery_eligible(title, _listed_location(row), filter_cfg, employment)
+
+    df = df[df.apply(_keep, axis=1)]
     filtered = before - len(df)
 
     conn = get_connection()
-    new, existing = store_jobspy_results(conn, df, s["query"])
+    new, existing = store_jobspy_results(conn, df, s["query"], search_cfg=search_cfg)
 
     msg = f"[{label}] {before} results -> {new} new, {existing} dupes"
     if filtered:
-        msg += f", {filtered} filtered (location)"
+        msg += f", {filtered} filtered"
     log.info(msg)
 
     return {"new": new, "existing": existing, "errors": 0, "filtered": filtered, "total": before, "label": label}
@@ -415,6 +406,7 @@ def _full_crawl(
             s, sites, results_per_site, hours_old,
             proxy_config, defaults, max_retries,
             accept_locs, reject_locs, glassdoor_map,
+            search_cfg=search_cfg,
         )
         total_new += result["new"]
         total_existing += result["existing"]

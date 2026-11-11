@@ -5,6 +5,7 @@ pipeline stage are created up front so any stage can run independently
 without migration ordering issues.
 """
 
+import re
 import sqlite3
 import threading
 from datetime import UTC, datetime
@@ -12,6 +13,7 @@ from pathlib import Path
 
 from applypilot import config
 from applypilot.config import DB_PATH
+from applypilot.discovery.filters import excluded_title_pattern
 
 # Thread-local connection storage — each thread gets its own connection
 # (required for SQLite thread safety with parallel workers)
@@ -32,6 +34,9 @@ def application_queue_filter(min_score: int = 7, dry_run: bool = False,
         "AND COALESCE(apply_attempts, 0) < ? AND fit_score >= ?"
     )
     params: list = ['failed' if dry_run else 'previewed', config.DEFAULTS['max_apply_attempts'], min_score]
+    if pattern := excluded_title_pattern(config.load_search_config()):
+        where += " AND NOT (COALESCE(title, '') REGEXP ?)"
+        params.append(pattern)
     sites, patterns = blocked if blocked is not None else config.load_blocked_sites()
     if sites:
         where += f" AND site NOT IN ({','.join('?' for _ in sites)})"
@@ -43,6 +48,26 @@ def application_queue_filter(min_score: int = 7, dry_run: bool = False,
         where += f" AND url NOT IN ({','.join('?' for _ in skipped_urls)})"
         params.extend(skipped_urls)
     return where, params
+
+
+def purge_ineligible_discoveries() -> int:
+    """Delete unapplied jobs that miss the current title, internship, or location rules.
+
+    Applied, failed, and previewed rows stay so application history is kept.
+    """
+    from applypilot.discovery.filters import discovery_eligible
+
+    cfg = config.load_search_config() or {}
+    conn = init_db()
+    rows = conn.execute(
+        "SELECT url, title, location FROM jobs "
+        "WHERE applied_at IS NULL AND COALESCE(TRIM(apply_status), '') = ''"
+    ).fetchall()
+    urls = [row["url"] for row in rows if not discovery_eligible(row["title"], row["location"], cfg)]
+    if urls:
+        conn.executemany("DELETE FROM jobs WHERE url = ?", [(url,) for url in urls])
+        conn.commit()
+    return len(urls)
 
 
 def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
@@ -71,6 +96,7 @@ def get_connection(db_path: Path | str | None = None) -> sqlite3.Connection:
             pass
 
     conn = sqlite3.connect(path, timeout=30)
+    conn.create_function('regexp', 2, lambda pattern, value: int(bool(re.search(pattern, value or ''))), deterministic=True)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=10000")
     conn.row_factory = sqlite3.Row

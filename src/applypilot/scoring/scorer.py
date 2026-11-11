@@ -10,8 +10,10 @@ import re
 import time
 from datetime import UTC, datetime
 
+from applypilot import config
 from applypilot.config import RESUME_PATH, load_profile
 from applypilot.database import get_connection, get_jobs_by_stage
+from applypilot.discovery.filters import title_excluded
 from applypilot.llm import get_client
 from applypilot.progress import BatchProgress
 
@@ -80,6 +82,8 @@ def score_job(resume_text: str, job: dict) -> dict:
     Returns:
         {"score": int, "keywords": str, "reasoning": str}
     """
+    if title_excluded(job.get('title'), config.load_search_config()):
+        return {'score': 1, 'keywords': '', 'reasoning': 'Excluded by configured job-title preferences.'}
     job_text = (
         f"TITLE: {job['title']}\n"
         f"COMPANY: {job['site']}\n"

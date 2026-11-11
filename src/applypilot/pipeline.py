@@ -35,7 +35,7 @@ console = Console()
 STAGE_ORDER = ("discover", "enrich", "score", "tailor", "cover", "pdf")
 
 STAGE_META: dict[str, dict] = {
-    "discover": {"desc": "Job discovery (JobSpy + Workday + smart extract)"},
+    "discover": {"desc": "Job discovery (configured boards, remote feeds and career sites)"},
     "enrich":   {"desc": "Detail enrichment (full descriptions + apply URLs)"},
     "score":    {"desc": "LLM scoring (fit 1-10)"},
     "tailor":   {"desc": "Resume tailoring (LLM + validation)"},
@@ -60,12 +60,18 @@ _UPSTREAM: dict[str, str | None] = {
 # ---------------------------------------------------------------------------
 
 def _run_discover(workers: int = 1) -> dict:
-    """Stage: Job discovery - JobSpy, Workday, and smart-extract scrapers."""
+    """Stage: Job discovery - JobSpy, Workday, remote feeds, and smart-extract scrapers."""
     from importlib import import_module
 
     from applypilot.config import load_search_config
+    from applypilot.database import purge_ineligible_discoveries
+
+    removed = purge_ineligible_discoveries()
+    if removed:
+        console.print(f"  [cyan]removed {removed} stored jobs outside current filters[/cyan]")
 
     runners = {
+        "remote_feeds": ("applypilot.discovery.remote_feeds", "run_discovery", {}),
         "jobspy": ("applypilot.discovery.jobspy", "run_discovery", {}),
         "workday": ("applypilot.discovery.workday", "run_workday_discovery", {"workers": workers}),
         "smartextract": ("applypilot.discovery.smartextract", "run_smart_extract", {"workers": workers}),

@@ -44,6 +44,12 @@ applypilot apply --dry-run  # fill forms without submitting
 
 ## Two Paths
 
+This checkout additionally supports cached public job feeds from Himalayas, Remotive, Jobicy, RemoteOK, We Work Remotely, Hirist, and Wellfound.
+Enable `remote_feeds` under `discovery.sources` in `~/.applypilot/searches.yaml` to use them alongside JobSpy.
+Workday career portals can be enabled with `workday` in that same source list.
+No extra API keys or dependencies are needed for these feeds.
+See [guide.md](guide.md#broader-remote-discovery) for the configured search scope, internship exclusions and cache behavior.
+
 ### Cursor setup from this checkout
 
 Cursor can power every AI stage and browser autofill through its official Python SDK.

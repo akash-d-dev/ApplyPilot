@@ -176,7 +176,7 @@ Composer 2.5 stays in standard mode because the SDK selection explicitly sets <c
 No secrets are embedded in this guide.</td></tr>
 <tr><td><code>~/.applypilot/profile.json / resume.txt</code></td><td>Applicant facts and the master resume used in text stages and application prompts.</td></tr>
 <tr><td><code>~/.applypilot/searches.yaml</code></td><td>Queries, remote/location preferences and enabled discovery sources.
-Your configured discovery source is JobSpy, searching LinkedIn and Indeed.</td></tr>
+Configured discovery sources are JobSpy (LinkedIn and Indeed), public feeds from Himalayas, Remotive, Jobicy, RemoteOK, We Work Remotely, Hirist and Wellfound, plus the Workday employers listed in searches.yaml. Unapplied jobs outside the current filters are removed at the start of discovery. Internship exclusions are applied before storage and in the automatic application queue.</td></tr>
 <tr><td><code>~/.applypilot/applypilot.db</code></td><td>Discovered jobs, descriptions, scores, artifact paths, attempts and application state.</td></tr>
 <tr><td><code>~/.applypilot/tailored_resumes/</code><br><code>~/.applypilot/cover_letters/</code></td><td>Generated text and PDFs.
 New filenames include a stable identifier derived from the job URL, preventing identical titles from overwriting one another.</td></tr>
@@ -197,7 +197,7 @@ The source of truth for later results is the local database and each browser run
 </main>
 <script>
 const stages={
- discover:['Discover','Input: searches.yaml. Work: JobSpy searches job boards and stores deduplicated listings, titles, source, location, salary and available descriptions in SQLite. Your configuration enables JobSpy; other discovery backends exist but are disabled here.','AI: the configured JobSpy search itself does not call Cursor.'],
+ discover:['Discover','Input: searches.yaml. Work: JobSpy searches job boards and stores deduplicated listings, titles, source, location, salary and available descriptions in SQLite. Your configuration enables JobSpy, public feeds from Himalayas, Remotive, Jobicy, RemoteOK, We Work Remotely, Hirist and Wellfound, and the configured Workday employers. Other career-site backends remain disabled here. Unapplied jobs outside the current filters are removed before the new search. Internships are excluded; undisclosed pay remains eligible.','AI: the configured JobSpy search itself does not call Cursor.'],
  enrich:['Enrich','Input: listings needing details. Work: fetch fuller descriptions and application links, with extraction fallbacks. Existing complete descriptions can bypass this work. Output: full_description, application_url and enrichment status.','AI: an extraction fallback can use the shared text model; basic scraping does not require it.'],
  score:['Score','Input: master resume, applicant preferences and each description. Cursor returns a fit score from 1 to 10, keywords and reasoning. Completed scores are saved per job. The usual tailoring threshold is 7.','AI: fresh Cursor text request with built-in tools disabled.'],
  tailor:['Tailor','Input: eligible job, master resume and factual profile. Cursor returns structured resume content; code assembles the document and runs validation. Text, job trace and validation report are saved. Approved resumes get PDFs.','AI: generation and validation/judging can make model calls. Personal facts must come from the applicant data.'],
